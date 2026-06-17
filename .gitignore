@@ -1,0 +1,21 @@
+# Project-wide
+.vscode/
+.DS_Store
+
+# Backend (C# / .NET)
+backend/bin/
+backend/obj/
+backend/.vs/
+backend/*.user
+backend/*.suo
+backend/appsettings.Development.json
+
+# Frontend (Angular / Node.js)
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/.npm/
+frontend/.cache/
+frontend/yarn-error.log
+frontend/package-lock.json
+frontend/yarn.lock

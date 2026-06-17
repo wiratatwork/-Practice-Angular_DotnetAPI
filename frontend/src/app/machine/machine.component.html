@@ -1,0 +1,236 @@
+<div class="page-container">
+    <nav class="top-navbar">
+        <div class="navbar-user">
+            <span class="user-label">{{ currentUser()?.username }}</span>
+            <span class="role-badge" [class.role-admin]="isAdmin()">
+                {{ currentUser()?.role }}
+            </span>
+        </div>
+        <button class="btn btn-secondary btn-sm" (click)="logout()">ออกจากระบบ</button>
+    </nav>
+
+    <div class="page-header">
+        <h1>Machine Management</h1>
+        @if (isAdmin()) {
+        <button class="btn btn-primary" (click)="openAddModal()">
+            <span class="btn-icon">+</span> เพิ่มเครื่องจักร
+        </button>
+        }
+    </div>
+
+    <!-- Search Bar -->
+    <div class="search-bar">
+        <div class="search-input-wrapper">
+            <input type="text" class="form-input search-input" placeholder="ค้นหา Machine No หรือ Machine Name..."
+                [value]="searchTerm()" (input)="onSearchInput($event)" autocomplete="off" />
+            @if (searchTerm()) {
+            <button class="search-clear" (click)="clearSearch()" aria-label="ล้างการค้นหา">✕</button>
+            }
+            @if (isSearching()) {
+            <span class="spinner-search"></span>
+            }
+        </div>
+    </div>
+
+    <!-- Success / Error Alert -->
+    @if (successMessage()) {
+    <div class="alert alert-success" role="alert">
+        <span class="alert-icon">✓</span> {{ successMessage() }}
+    </div>
+    }
+    @if (errorMessage()) {
+    <div class="alert alert-error" role="alert">
+        <span class="alert-icon">✕</span> {{ errorMessage() }}
+    </div>
+    }
+
+    <!-- Table -->
+    <div class="table-card">
+        @if (isLoading()) {
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <p>กำลังโหลดข้อมูล...</p>
+        </div>
+        } @else if (machines().length === 0) {
+        <div class="empty-state">
+            <p>ยังไม่มีข้อมูลเครื่องจักร</p>
+        </div>
+        } @else {
+        <div class="table-wrapper">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Machine No</th>
+                        <th>Machine Name</th>
+                        <th>Plant</th>
+                        <th>Status</th>
+                        @if (isAdmin()) {
+                        <th>จัดการ</th>
+                        }
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (machine of machines(); track machine.machineNo; let i = $index) {
+                    <tr>
+                        <td class="text-center text-muted">{{ i + 1 }}</td>
+                        <td class="font-mono font-bold">{{ machine.machineNo }}</td>
+                        <td>{{ machine.machineName }}</td>
+                        <td>{{ machine.plant }}</td>
+                        <td>
+                            <span class="badge"
+                                [class]="machine.status.toLowerCase() === 'online' ? 'badge-success' : 'badge-inactive'">
+                                {{ machine.status }}
+                            </span>
+                        </td>
+                        @if (isAdmin()) {
+                        <td class="actions-cell">
+                            <button class="btn btn-sm btn-outline" (click)="openEditModal(machine)" title="แก้ไข">
+                                ✏️ แก้ไข
+                            </button>
+                            <button class="btn btn-sm btn-danger-outline" (click)="confirmDelete(machine.machineNo)"
+                                title="ลบ">
+                                🗑️ ลบ
+                            </button>
+                        </td>
+                        }
+                    </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        }
+    </div>
+</div>
+
+<!-- Add / Edit Modal -->
+@if (isModalOpen()) {
+<div class="modal-backdrop" (click)="closeModal()">
+    <div class="modal" (click)="$event.stopPropagation()" role="dialog"
+        [attr.aria-label]="isEditMode() ? 'แก้ไขเครื่องจักร' : 'เพิ่มเครื่องจักร'">
+        <div class="modal-header">
+            <h2>{{ isEditMode() ? 'แก้ไขเครื่องจักร' : 'เพิ่มเครื่องจักร' }}</h2>
+            <button class="modal-close" (click)="closeModal()" aria-label="ปิด">✕</button>
+        </div>
+
+        <div class="modal-body">
+            @if (errorMessage()) {
+            <div class="alert alert-error alert-sm" role="alert">{{ errorMessage() }}</div>
+            }
+
+            <form [formGroup]="form" (ngSubmit)="submitForm()" novalidate>
+
+                <!-- MachineNo -->
+                <div class="form-group">
+                    <label for="machineNo" class="form-label">
+                        Machine No <span class="required">*</span>
+                    </label>
+                    <input id="machineNo" type="text" class="form-input" [class.input-error]="isInvalid('machineNo')"
+                        formControlName="machineNo" placeholder="กรอก Machine No" maxlength="50" autocomplete="off" />
+                    @if (hasError('machineNo', 'required')) {
+                    <span class="error-msg">กรุณากรอก Machine No</span>
+                    }
+                    @if (hasError('machineNo', 'maxlength')) {
+                    <span class="error-msg">Machine No ต้องไม่เกิน 50 ตัวอักษร</span>
+                    }
+                    @if (hasError('machineNo', 'duplicateMachineNo')) {
+                    <span class="error-msg">Machine No นี้มีอยู่ในระบบแล้ว</span>
+                    }
+                </div>
+
+                <!-- MachineName -->
+                <div class="form-group">
+                    <label for="machineName" class="form-label">
+                        Machine Name <span class="required">*</span>
+                    </label>
+                    <input id="machineName" type="text" class="form-input"
+                        [class.input-error]="isInvalid('machineName')" formControlName="machineName"
+                        placeholder="กรอก Machine Name" maxlength="50" autocomplete="off" />
+                    @if (hasError('machineName', 'required')) {
+                    <span class="error-msg">กรุณากรอก Machine Name</span>
+                    }
+                    @if (hasError('machineName', 'maxlength')) {
+                    <span class="error-msg">Machine Name ต้องไม่เกิน 50 ตัวอักษร</span>
+                    }
+                    @if (hasError('machineName', 'duplicateName')) {
+                    <span class="error-msg">Machine Name นี้มีอยู่ในระบบแล้ว</span>
+                    }
+                </div>
+
+                <!-- Plant -->
+                <div class="form-group">
+                    <label for="plant" class="form-label">
+                        Plant <span class="required">*</span>
+                    </label>
+                    <input id="plant" type="text" class="form-input" [class.input-error]="isInvalid('plant')"
+                        formControlName="plant" placeholder="กรอก Plant" maxlength="10" autocomplete="off" />
+                    @if (hasError('plant', 'required')) {
+                    <span class="error-msg">กรุณากรอก Plant</span>
+                    }
+                    @if (hasError('plant', 'maxlength')) {
+                    <span class="error-msg">Plant ต้องไม่เกิน 10 ตัวอักษร</span>
+                    }
+                </div>
+
+                <!-- Status -->
+                <div class="form-group">
+                    <label for="status" class="form-label">
+                        Status <span class="required">*</span>
+                    </label>
+                    <select id="status" class="form-input" [class.input-error]="isInvalid('status')"
+                        formControlName="status">
+                        <option value="">-- เลือก Status --</option>
+                        <option value="ONLINE">ONLINE</option>
+                        <option value="OFFLINE">OFFLINE</option>
+                    </select>
+                    @if (hasError('status', 'required')) {
+                    <span class="error-msg">กรุณาเลือก Status</span>
+                    }
+                </div>
+
+                <!-- Footer -->
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" (click)="closeModal()"
+                        [disabled]="isSubmitting() || isDuplicateNameChecking()">
+                        ยกเลิก
+                    </button>
+                    <button type="submit" class="btn btn-primary"
+                        [disabled]="isSubmitting() || isDuplicateNameChecking()">
+                        @if (isSubmitting() || isDuplicateNameChecking()) {
+                        <span class="spinner-sm"></span>
+                        กำลังบันทึก...
+                        } @else {
+                        {{ isEditMode() ? 'บันทึกการแก้ไข' : 'เพิ่มเครื่องจักร' }}
+                        }
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>
+}
+
+<!-- Delete Confirm Modal -->
+@if (deleteConfirmMachineNo()) {
+<div class="modal-backdrop" (click)="cancelDelete()">
+    <div class="modal modal-sm modal-confirm" (click)="$event.stopPropagation()" role="dialog" aria-label="ยืนยันการลบ">
+        <div class="modal-header">
+            <h2>ยืนยันการลบ</h2>
+            <button class="modal-close" (click)="cancelDelete()" aria-label="ปิด">✕</button>
+        </div>
+        <div class="modal-body">
+            <p class="confirm-text">
+                คุณต้องการลบเครื่องจักร
+                <strong>{{ getDeleteConfirmMachine()?.machineName }}</strong>
+                ({{ deleteConfirmMachineNo() }}) ใช่หรือไม่?
+            </p>
+            <p class="confirm-warning">การดำเนินการนี้ไม่สามารถย้อนกลับได้</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" (click)="cancelDelete()">ยกเลิก</button>
+            <button class="btn btn-danger" (click)="deleteMachine()">ยืนยันลบ</button>
+        </div>
+    </div>
+</div>
+}
