@@ -66,14 +66,6 @@ docker compose down -v
 
 ---
 
-รันคำสั่งเพื่อเพิ่มตารางใน pgAdmin (http://localhost:5050)
-CREATE TABLE Machine (
-    machineno VARCHAR(50) PRIMARY KEY,
-    machinename VARCHAR(50),
-    plant VARCHAR(10),
-    status VARCHAR(10)
-);
-
 ## URL ทั้งหมด
 
 | Service        | URL                                      | หมายเหตุ                    |
