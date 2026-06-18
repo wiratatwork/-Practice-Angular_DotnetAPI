@@ -32,7 +32,11 @@ services:
       Jwt__Key: "BasicApp-Docker-SuperSecret-JWT-Key-256bit-Minimum!"
       Jwt__Issuer: "BasicApp"
       Jwt__Audience: "BasicApp"
-      Jwt__ExpiryMinutes: "480"
+      Jwt__AccessTokenExpiryMinutes: "15"
+      Jwt__RefreshTokenSlidingDays: "7"
+      Jwt__RefreshCookieName: "refresh_token"
+      Jwt__RefreshCookiePath: "/api/auth"
+      Jwt__RefreshCookieSecure: "false"
     ports:
       - "5001:5001"
     depends_on:

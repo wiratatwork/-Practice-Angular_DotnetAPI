@@ -13,16 +13,24 @@ namespace backend.Models
         public string Password { get; set; } = string.Empty;
     }
 
-    public class LoginResponse
-    {
-        public string Token { get; set; } = string.Empty;
-        public string Username { get; set; } = string.Empty;
-        public string Role { get; set; } = string.Empty;
-    }
-
     public class UserDto
     {
         public string Username { get; set; } = string.Empty;
         public string Role { get; set; } = string.Empty;
+    }
+
+    public class TokenResponse
+    {
+        public string AccessToken { get; set; } = string.Empty;
+        public int ExpiresIn { get; set; }
+        public UserDto User { get; set; } = new();
+    }
+
+    public class LoginResponse : TokenResponse
+    {
+    }
+
+    public class RefreshResponse : TokenResponse
+    {
     }
 }

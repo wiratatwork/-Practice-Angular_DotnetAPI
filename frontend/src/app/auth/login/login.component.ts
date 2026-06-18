@@ -27,7 +27,14 @@ export class LoginComponent {
     constructor() {
         if (this.authService.isLoggedIn()) {
             this.router.navigate(['/']);
+            return;
         }
+
+        this.authService.initializeSession().subscribe((success) => {
+            if (success) {
+                this.router.navigate(['/']);
+            }
+        });
     }
 
     submit(): void {

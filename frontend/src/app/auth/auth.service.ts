@@ -1,11 +1,12 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { Observable, tap } from 'rxjs';
-import { AuthUser, LoginRequest, LoginResponse, UserRole } from './auth.model';
+import { Observable, catchError, finalize, map, of, shareReplay, tap } from 'rxjs';
+import { AuthUser, LoginRequest, TokenResponse, UserRole } from './auth.model';
 
-const TOKEN_KEY = 'auth_token';
-const USER_KEY = 'auth_user';
+const AUTH_HTTP_OPTIONS = {
+    withCredentials: true,
+};
 
 @Injectable({
     providedIn: 'root',
@@ -15,60 +16,80 @@ export class AuthService {
     private readonly router = inject(Router);
     private readonly baseUrl = '/api/auth';
 
-    private readonly currentUserSignal = signal<AuthUser | null>(this.loadStoredUser());
+    private readonly accessTokenSignal = signal<string | null>(null);
+    private readonly currentUserSignal = signal<AuthUser | null>(null);
+    private refreshInProgress: Observable<boolean> | null = null;
 
     readonly currentUser = this.currentUserSignal.asReadonly();
     readonly isLoggedIn = computed(() => this.currentUserSignal() !== null);
     readonly isAdmin = computed(() => this.currentUserSignal()?.role === 'Admin');
 
-    login(credentials: LoginRequest): Observable<LoginResponse> {
-        return this.http.post<LoginResponse>(`${this.baseUrl}/login`, credentials).pipe(
-            tap((response) => {
-                this.persistSession(response);
-            }),
-        );
+    login(credentials: LoginRequest): Observable<TokenResponse> {
+        return this.http
+            .post<TokenResponse>(`${this.baseUrl}/login`, credentials, AUTH_HTTP_OPTIONS)
+            .pipe(tap((response) => this.applySession(response)));
+    }
+
+    refreshSession(): Observable<boolean> {
+        if (this.refreshInProgress) {
+            return this.refreshInProgress;
+        }
+
+        this.refreshInProgress = this.http
+            .post<TokenResponse>(`${this.baseUrl}/refresh`, {}, AUTH_HTTP_OPTIONS)
+            .pipe(
+                tap((response) => this.applySession(response)),
+                map(() => true),
+                catchError(() => {
+                    this.clearSession(false);
+                    return of(false);
+                }),
+                finalize(() => {
+                    this.refreshInProgress = null;
+                }),
+                shareReplay(1),
+            );
+
+        return this.refreshInProgress;
+    }
+
+    initializeSession(): Observable<boolean> {
+        if (this.isLoggedIn()) {
+            return of(true);
+        }
+
+        return this.refreshSession();
     }
 
     logout(): void {
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(USER_KEY);
-        this.currentUserSignal.set(null);
-        this.router.navigate(['/login']);
+        this.http
+            .post(`${this.baseUrl}/logout`, {}, AUTH_HTTP_OPTIONS)
+            .pipe(finalize(() => this.clearSession(true)))
+            .subscribe({
+                error: () => this.clearSession(true),
+            });
     }
 
-    getToken(): string | null {
-        return localStorage.getItem(TOKEN_KEY);
+    getAccessToken(): string | null {
+        return this.accessTokenSignal();
     }
 
-    private persistSession(response: LoginResponse): void {
+    private applySession(response: TokenResponse): void {
         const user: AuthUser = {
-            username: response.username,
-            role: response.role as UserRole,
+            username: response.user.username,
+            role: response.user.role as UserRole,
         };
 
-        localStorage.setItem(TOKEN_KEY, response.token);
-        localStorage.setItem(USER_KEY, JSON.stringify(user));
+        this.accessTokenSignal.set(response.accessToken);
         this.currentUserSignal.set(user);
     }
 
-    private loadStoredUser(): AuthUser | null {
-        const token = localStorage.getItem(TOKEN_KEY);
-        const userJson = localStorage.getItem(USER_KEY);
+    private clearSession(navigateToLogin: boolean): void {
+        this.accessTokenSignal.set(null);
+        this.currentUserSignal.set(null);
 
-        if (!token || !userJson) {
-            return null;
+        if (navigateToLogin) {
+            this.router.navigate(['/login']);
         }
-
-        try {
-            return JSON.parse(userJson) as AuthUser;
-        } catch {
-            this.clearStorage();
-            return null;
-        }
-    }
-
-    private clearStorage(): void {
-        localStorage.removeItem(TOKEN_KEY);
-        localStorage.removeItem(USER_KEY);
     }
 }

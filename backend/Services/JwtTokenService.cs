@@ -15,21 +15,23 @@ namespace backend.Services
             _configuration = configuration;
         }
 
-        public string GenerateToken(User user)
+        public (string AccessToken, int ExpiresInSeconds) GenerateAccessToken(User user)
         {
             var jwtKey = _configuration["Jwt:Key"]
                 ?? throw new InvalidOperationException("JWT Key is not configured.");
             var issuer = _configuration["Jwt:Issuer"] ?? "BasicApp";
             var audience = _configuration["Jwt:Audience"] ?? "BasicApp";
-            var expiryMinutes = int.TryParse(_configuration["Jwt:ExpiryMinutes"], out var minutes)
+            var expiryMinutes = int.TryParse(_configuration["Jwt:AccessTokenExpiryMinutes"], out var minutes)
                 ? minutes
-                : 480;
+                : 15;
 
+            var expiresAt = DateTime.UtcNow.AddMinutes(expiryMinutes);
             var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
             var claims = new[]
             {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.Username),
                 new Claim(ClaimTypes.Role, user.Role),
                 new Claim(JwtRegisteredClaimNames.Sub, user.Username),
@@ -40,10 +42,13 @@ namespace backend.Services
                 issuer: issuer,
                 audience: audience,
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(expiryMinutes),
+                expires: expiresAt,
                 signingCredentials: credentials);
 
-            return new JwtSecurityTokenHandler().WriteToken(token);
+            var accessToken = new JwtSecurityTokenHandler().WriteToken(token);
+            var expiresIn = (int)Math.Max(1, (expiresAt - DateTime.UtcNow).TotalSeconds);
+
+            return (accessToken, expiresIn);
         }
     }
 }

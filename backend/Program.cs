@@ -20,6 +20,10 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 });
 
 builder.Services.AddScoped<JwtTokenService>();
+builder.Services.AddScoped<RefreshTokenService>();
+builder.Services.AddScoped<RefreshTokenCookieService>();
+builder.Services.AddScoped<AuthAuditService>();
+builder.Services.AddHttpContextAccessor();
 
 var jwtKey = builder.Configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("JWT Key is not configured.");
