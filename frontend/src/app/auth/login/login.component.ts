@@ -45,8 +45,8 @@ export class LoginComponent {
 
         if (this.form.invalid) {
             return;
-        }
-
+        };
+        
         this.isSubmitting.set(true);
         this.errorMessage.set(null);
 
