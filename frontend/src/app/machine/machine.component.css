@@ -6,44 +6,6 @@
   font-family: 'Segoe UI', sans-serif;
 }
 
-.top-navbar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.navbar-user {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.user-label {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #334155;
-}
-
-.role-badge {
-  display: inline-block;
-  padding: 0.15rem 0.5rem;
-  border-radius: 9999px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  background-color: #f1f5f9;
-  color: #64748b;
-}
-
-.role-badge.role-admin {
-  background-color: #dbeafe;
-  color: #1d4ed8;
-}
-
 .page-header {
   display: flex;
   align-items: center;

@@ -26,7 +26,6 @@ export class MachineComponent implements OnInit {
     private readonly destroyRef = inject(DestroyRef);
     private readonly searchSubject = new Subject<string>();
 
-    readonly currentUser = this.authService.currentUser;
     readonly isAdmin = this.authService.isAdmin;
 
     machines = signal<Machine[]>([]);
@@ -273,7 +272,4 @@ export class MachineComponent implements OnInit {
         return !!(ctrl?.invalid && (ctrl.dirty || ctrl.touched));
     }
 
-    logout(): void {
-        this.authService.logout();
-    }
 }
