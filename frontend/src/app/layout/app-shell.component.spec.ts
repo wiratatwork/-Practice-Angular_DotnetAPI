@@ -1,9 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { provideIcons } from '@ng-icons/core';
 import { signal } from '@angular/core';
 import { AppShellComponent } from './app-shell.component';
 import { AuthService } from '../auth/auth.service';
 import { routes } from '../app.routes';
+import { APP_ICON_REGISTRY } from '../shared/app-icons';
 
 describe('AppShellComponent', () => {
   const authServiceMock = {
@@ -19,6 +21,7 @@ describe('AppShellComponent', () => {
       imports: [AppShellComponent],
       providers: [
         provideRouter(routes),
+        provideIcons(APP_ICON_REGISTRY),
         { provide: AuthService, useValue: authServiceMock },
       ],
     }).compileComponents();

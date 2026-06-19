@@ -6,16 +6,18 @@ import {
     Validators,
 } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { NgIcon } from '@ng-icons/core';
 import { MachineService } from './machine.service';
 import { Machine } from './machine.model';
 import { debounceTime, distinctUntilChanged, switchMap, of, Subject } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../auth/auth.service';
+import { APP_ICONS } from '../shared/app-icons';
 
 @Component({
     selector: 'app-machine',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule],
+    imports: [CommonModule, ReactiveFormsModule, NgIcon],
     templateUrl: './machine.component.html',
     styleUrl: './machine.component.css',
 })
@@ -27,6 +29,7 @@ export class MachineComponent implements OnInit {
     private readonly searchSubject = new Subject<string>();
 
     readonly isAdmin = this.authService.isAdmin;
+    readonly icons = APP_ICONS;
 
     machines = signal<Machine[]>([]);
     isLoading = signal(false);

@@ -1,13 +1,14 @@
-<div class="login-page">
-    <div class="login-card">
-        <div class="login-header">
-            <h1>Machine Management</h1>
-            <p>เข้าสู่ระบบเพื่อใช้งาน</p>
+<div class="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-slate-100 to-slate-200 p-4 sm:p-6">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 sm:p-8 shadow-[0_10px_40px_rgba(0,0,0,0.1)]">
+        <div class="mb-6 text-center">
+            <h1 class="mb-2 text-2xl font-bold text-slate-800">Machine Management</h1>
+            <p class="m-0 text-sm text-slate-500">เข้าสู่ระบบเพื่อใช้งาน</p>
         </div>
 
         @if (errorMessage()) {
         <div class="alert alert-error" role="alert">
-            <span class="alert-icon">✕</span> {{ errorMessage() }}
+            <ng-icon class="alert-icon icon-inline" [name]="icons.close" aria-hidden="true" />
+            {{ errorMessage() }}
         </div>
         }
 
@@ -45,9 +46,9 @@
             </button>
         </form>
 
-        <div class="login-hint">
-            <p><strong>Admin:</strong> admin / Admin@1234</p>
-            <p><strong>User:</strong> user / User@1234</p>
+        <div class="mt-6 border-t border-slate-200 pt-5 text-center text-xs text-slate-500">
+            <p class="my-1"><strong class="text-slate-600">Admin:</strong> admin / Admin@1234</p>
+            <p class="my-1"><strong class="text-slate-600">User:</strong> user / User@1234</p>
         </div>
     </div>
 </div>

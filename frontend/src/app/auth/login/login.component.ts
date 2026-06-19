@@ -2,19 +2,22 @@ import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { NgIcon } from '@ng-icons/core';
 import { AuthService } from '../auth.service';
+import { APP_ICONS } from '../../shared/app-icons';
 
 @Component({
     selector: 'app-login',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule],
+    imports: [CommonModule, ReactiveFormsModule, NgIcon],
     templateUrl: './login.component.html',
-    styleUrl: './login.component.css',
 })
 export class LoginComponent {
     private readonly fb = inject(FormBuilder);
     private readonly authService = inject(AuthService);
     private readonly router = inject(Router);
+
+    readonly icons = APP_ICONS;
 
     form: FormGroup = this.fb.group({
         username: ['', [Validators.required, Validators.maxLength(50)]],

@@ -14,7 +14,7 @@
                 [attr.aria-label]="item.label"
                 [title]="sidebarCollapsed() ? item.label : null"
             >
-                <span class="nav-icon" aria-hidden="true">{{ item.icon }}</span>
+                <ng-icon class="nav-icon icon-nav" [name]="item.icon" aria-hidden="true" />
                 <span class="nav-label" [class.hidden-label]="sidebarCollapsed()">{{ item.label }}</span>
             </a>
             }
@@ -31,7 +31,7 @@
                 aria-controls="app-sidebar"
                 aria-label="สลับเมนูด้านข้าง"
             >
-                <span class="toggle-icon" aria-hidden="true">☰</span>
+                <ng-icon class="toggle-icon icon-nav" [name]="icons.menu" aria-hidden="true" />
             </button>
 
             <div class="topbar-spacer"></div>
@@ -46,6 +46,7 @@
             </div>
 
             <button type="button" class="btn btn-secondary btn-sm" (click)="logout()">
+                <ng-icon class="icon-inline" [name]="icons.logout" aria-hidden="true" />
                 ออกจากระบบ
             </button>
         </header>

@@ -21,7 +21,9 @@
 - nav items กำหนดเป็น array ใน shell component พร้อม routerLink + routerLinkActive
 - sidebar collapse/expand เก็บ preference ใน localStorage
 - ใช้ inject(AuthService) ใน shell สำหรับ currentUser, isAdmin, logout
-- global styles ใน styles.css มี utility class .btn, .btn-primary, .btn-secondary, .btn-sm
+- global styles ใน styles.css ใช้ Tailwind + shared component classes (.btn, .form-input, .alert)
+- ใช้ @ng-icons/core สำหรับ icon ทั้งระบบ (ไม่ใช้ emoji) — ลงทะเบียนใน app.config.ts ผ่าน provideIcons()
+- navItems เก็บ icon เป็น AppIconName (เช่น 'heroHome') และ render ด้วย <ng-icon>
 - เขียน unit test สำหรับ routes, shell component, และ app root
 ```
 
@@ -71,7 +73,8 @@
 | Public vs Protected | `/login` ไม่มี guard / Shell + children มี `authGuard` |
 | Content-only Pages | Feature component มีแค่เนื้อหาหน้า (เช่น `.page-container`) |
 | Nav ใน Shell | เมนูไม่กระจายไปแต่ละหน้า แก้ที่ `navItems` จุดเดียว |
-| Global vs Local CSS | ปุ่ม/shared utility ใน `styles.css` / layout ใน shell CSS / page ใน component CSS |
+| Global vs Local CSS | Tailwind utilities ใน template + shared classes ใน `styles.css` (@layer components) / layout ใน shell CSS / page-specific CSS เฉพาะ animation หรือ logic ที่ซับซ้อน |
+| Icons | ใช้ `@ng-icons/core` + `<ng-icon>` — อ้างชื่อจาก `APP_ICONS` ใน `shared/app-icons.ts` |
 
 ### 1.6 ตัวอย่าง Prompt สั้น (copy-paste ได้)
 
@@ -116,7 +119,7 @@ app-root (<router-outlet />)
 - Machine มี `.page-container`, `.page-header` ของตัวเอง ไม่ duplicate shell
 
 **Global Styles**
-- `styles.css`: reset, body, shared button utilities (`.btn`, `.btn-primary`, `.btn-secondary`, `.btn-sm`)
+- `styles.css`: Tailwind entry (`@import 'tailwindcss'`), base reset, shared component classes (`.btn`, `.form-input`, `.alert`, spinners, icon sizing utilities)
 
 ### 2.2 ไฟล์สำคัญ
 
@@ -162,7 +165,9 @@ app-root (<router-outlet />)
 
 | ไฟล์ | บทบาท |
 |------|--------|
-| `frontend/src/styles.css` | Global reset + shared button utilities ใช้ร่วม shell และ feature pages |
+| `frontend/src/styles.css` | Tailwind + global shared component classes |
+| `frontend/postcss.config.json` | PostCSS plugin สำหรับ Tailwind v4 |
+| `frontend/src/app/shared/app-icons.ts` | Semantic icon map + registry สำหรับ `provideIcons()` |
 
 #### Tests
 
@@ -232,7 +237,7 @@ Sidebar navigation ใน `app-shell.component.html` ใช้ **@for loop** เ
         [attr.aria-label]="item.label"
         [title]="sidebarCollapsed() ? item.label : null"
     >
-        <span class="nav-icon" aria-hidden="true">{{ item.icon }}</span>
+        <ng-icon class="nav-icon icon-nav" [name]="item.icon" aria-hidden="true" />
         <span class="nav-label" [class.hidden-label]="sidebarCollapsed()">{{ item.label }}</span>
     </a>
     }
@@ -308,10 +313,11 @@ Sidebar navigation ใน `app-shell.component.html` ใช้ **@for loop** เ
   - `sidebarCollapsed()` = `true` (sidebar ปิด) → `title="Home"` → เมื่อ hover เห็น tooltip "Home"
   - `sidebarCollapsed()` = `false` (sidebar เปิด) → `title=null` (ไม่ต้อง tooltip เพราะ label visible อยู่)
 
-#### `<span class="nav-icon" aria-hidden="true">{{ item.icon }}</span>`
+#### `<ng-icon class="nav-icon icon-nav" [name]="item.icon" aria-hidden="true" />`
 - **`aria-hidden="true"`**: บอก screen reader ให้ละเว้น element นี้
-  - **เหตุผล**: icon เป็น visual decoration (emoji เช่น 🏠) ไม่มีความหมายข้อความ ถ้า screen reader อ่านออกมาจะ confusing
+  - **เหตุผล**: icon เป็น visual decoration (SVG จาก ng-icons) ไม่มีความหมายข้อความ ถ้า screen reader อ่านออกมาจะ confusing
   - `aria-label` ของ `<a>` tag ก็พอ
+- **`[name]="item.icon"`**: อ้างชื่อ icon ที่ลงทะเบียนใน `provideIcons()` — ใช้ค่าจาก `APP_ICONS` ใน `shared/app-icons.ts`
 
 #### `<span class="nav-label" [class.hidden-label]="sidebarCollapsed()">{{ item.label }}</span>`
 - **Class binding**: `[class.hidden-label]="sidebarCollapsed()`
@@ -356,10 +362,18 @@ Sidebar navigation ใน `app-shell.component.html` ใช้ **@for loop** เ
 
 ```typescript
 // app-shell.component.ts
+import { APP_ICONS, AppIconName } from '../shared/app-icons';
+
+interface NavItem {
+    label: string;
+    icon: AppIconName;
+    route: string;
+}
+
 export class AppShellComponent {
-    navItems = [
-        { route: '/', label: 'Home', icon: '🏠' },
-        { route: 'machine', label: 'Machine', icon: '⚙️' },
+    navItems: NavItem[] = [
+        { route: '/', label: 'Home', icon: APP_ICONS.navHome },
+        { route: 'machine', label: 'Machine', icon: APP_ICONS.navMachine },
     ];
     
     sidebarCollapsed = signal(false);
@@ -414,7 +428,6 @@ export class AppShellComponent {
 }
 
 .nav-icon {
-    font-size: 1.25rem;
     flex-shrink: 0;
 }
 
@@ -441,7 +454,7 @@ export class AppShellComponent {
 
 ### 3.8 Checklist: ตรวจ Navigation Implementation
 
-- [ ] `navItems` array มี properties: `route`, `label`, `icon`
+- [ ] `navItems` array มี properties: `route`, `label`, `icon` (type `AppIconName` จาก `APP_ICONS`)
 - [ ] `@for (item of navItems; track item.route)` ใช้ `track` ไม่ลืม
 - [ ] `[routerLink]="item.route"` ผูก route ใน item กับ Angular Router
 - [ ] `routerLinkActive="active"` highlight active link ด้วย CSS class
@@ -472,9 +485,9 @@ export class AppShellComponent {
 2. **อัปเดต `navItems` ใน `app-shell.component.ts`**:
    ```typescript
    navItems = [
-       { route: '/', label: 'Home', icon: '🏠' },
-       { route: 'machine', label: 'Machine', icon: '⚙️' },
-       { route: 'reports', label: 'Reports', icon: '📊' },  // ← เพิ่ม
+       { route: '/', label: 'Home', icon: APP_ICONS.navHome },
+       { route: 'machine', label: 'Machine', icon: APP_ICONS.navMachine },
+       { route: 'reports', label: 'Reports', icon: 'heroChartBar' },  // ← เพิ่ม + ลงทะเบียนใน app-icons.ts
    ];
    ```
 
@@ -489,20 +502,45 @@ export class AppShellComponent {
 ```typescript
 // app-shell.component.ts
 navItems = computed(() => {
-    const base = [
-        { route: '/', label: 'Home', icon: '🏠' },
-        { route: 'machine', label: 'Machine', icon: '⚙️' },
+    const base: NavItem[] = [
+        { route: '/', label: 'Home', icon: APP_ICONS.navHome },
+        { route: 'machine', label: 'Machine', icon: APP_ICONS.navMachine },
     ];
     
     // ถ้า admin ให้แสดง settings
     if (this.isAdmin()) {
-        base.push({ route: 'settings', label: 'Settings', icon: '⚙️' });
+        base.push({ route: 'settings', label: 'Settings', icon: APP_ICONS.navMachine });
     }
     
     return base;
 });
 ```
 
+## 4. Tailwind + Icon Conventions
+
+### 4.1 Tailwind setup
+
+- Dependencies: `tailwindcss`, `@tailwindcss/postcss` (dev) — ติดตั้งผ่าน Docker/build (`npm install` ใน Dockerfile)
+- Config: `frontend/postcss.config.json`
+- Entry: `@import 'tailwindcss'` ใน `frontend/src/styles.css`
+- Shared UI patterns อยู่ใน `@layer components` ของ `styles.css` (`.btn`, `.form-input`, `.alert`, spinners)
+- Template ใหม่ควรใช้ Tailwind utility classes สำหรับ layout/spacing ก่อนสร้าง component CSS ใหม่
+
+### 4.2 Icon system (@ng-icons)
+
+- Packages: `@ng-icons/core`, `@ng-icons/heroicons`, `@ng-icons/lucide`, `@ng-icons/huge-icons`
+- ลงทะเบียนครั้งเดียวใน `app.config.ts`: `provideIcons(APP_ICON_REGISTRY)`
+- Semantic map: `frontend/src/app/shared/app-icons.ts` — ใช้ `APP_ICONS` แทน hardcode ชื่อ icon ใน template
+- Template pattern:
+  ```html
+  <ng-icon class="icon-inline" [name]="icons.close" aria-hidden="true" />
+  ```
+- Component ที่ใช้ `<ng-icon>` ต้อง `imports: [NgIcon]` ใน standalone component
+- **ห้ามใช้ emoji** เป็น icon ใน UI — ใช้ ng-icons จาก pack ที่เหมาะสม:
+  - Navigation / chrome → heroicons
+  - Action buttons (edit/delete) → lucide
+  - Search / logout → huge-icons
+
 ---
 
-*เอกสารนี้อธิบายคอลมน์ sidebar navigation ใน AppShellComponent ของ Angular app แบบ standalone pattern*
+*เอกสารนี้อ้างอิงจากโครงสร้างปัจจุบันของ Basic App (Angular standalone + AppShell + Tailwind + ng-icons)*
