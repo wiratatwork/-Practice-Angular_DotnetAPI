@@ -29,6 +29,33 @@ docker compose version
 
 ---
 
+## Environment Setup
+
+### 1. สร้างไฟล์ `.env` จาก template
+
+```bash
+cp .env.example .env
+```
+
+### 2. แก้ไขค่าใน `.env` ตามต้องการ
+
+```env
+# Database Configuration
+POSTGRES_PASSWORD=your_secure_password
+DB_CONNECTION=Host=postgres;Port=5432;Database=demo;Username=sa;Password=your_secure_password
+
+# JWT Configuration
+JWT_KEY=your_jwt_secret_key_minimum_256_bits
+
+# PgAdmin Configuration
+PGADMIN_EMAIL=admin@example.com
+PGADMIN_PASSWORD=admin
+```
+
+> **⚠️ สำคัญ:** ไฟล์ `.env` ถูก ignore โดย git แล้ว (อยู่ใน `.gitignore`) — **ห้าม commit ขึ้น repository**
+
+---
+
 ## การรัน Project
 
 ### 1. Clone หรือเปิด folder ของ project
@@ -124,13 +151,13 @@ http://localhost:5050
 2. ตั้งชื่อ (เช่น `demo-db`) ในแท็บ **General**
 3. ไปแท็บ **Connection** กรอกข้อมูล:
 
-| Field             | Value         |
-|-------------------|---------------|
-| Host name/address | `postgres`    |
-| Port              | `5432`        |
-| Maintenance DB    | `demo`        |
-| Username          | `sa`          |
-| Password          | `Password123!`|
+| Field             | Value                               |
+|-------------------|-------------------------------------|
+| Host name/address | `postgres`                          |
+| Port              | `5432`                              |
+| Maintenance DB    | `demo`                              |
+| Username          | `sa`                                |
+| Password          | ใช้ค่าจาก `POSTGRES_PASSWORD` ใน `.env` |
 
 4. คลิก **Save**
 
@@ -140,13 +167,13 @@ http://localhost:5050
 
 สำหรับเชื่อมต่อผ่าน client อื่น เช่น DBeaver, TablePlus:
 
-| Field    | Value          |
-|----------|----------------|
-| Host     | `localhost`    |
-| Port     | `5432`         |
-| Database | `demo`         |
-| Username | `sa`           |
-| Password | `Password123!` |
+| Field    | Value                                    |
+|----------|------------------------------------------|
+| Host     | `localhost`                              |
+| Port     | `5432`                                   |
+| Database | `demo`                                   |
+| Username | `sa`                                     |
+| Password | ใช้ค่าจาก `POSTGRES_PASSWORD` ใน `.env` |
 
 ---
 

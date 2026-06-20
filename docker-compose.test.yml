@@ -1,0 +1,9 @@
+services:
+
+  api:
+    image: ghcr.io/company/demo-api:test
+    environment:
+      ASPNETCORE_ENVIRONMENT: Testing
+
+  frontend:
+    image: ghcr.io/company/demo-frontend:test
