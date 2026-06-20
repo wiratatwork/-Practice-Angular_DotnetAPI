@@ -5,6 +5,9 @@
 *.suo
 *.user
 
+# Environment variables
+.env
+
 # Backend (.NET)
 **/bin/
 **/obj/
