@@ -26,3 +26,5 @@ frontend/yarn-error.log*
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+
+.env
