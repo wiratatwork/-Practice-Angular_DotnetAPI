@@ -1,0 +1,10 @@
+services:
+
+  api:
+    image: ghcr.io/company/demo-api:latest
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      Jwt__RefreshCookieSecure: "true"
+
+  frontend:
+    image: ghcr.io/company/demo-frontend:latest
