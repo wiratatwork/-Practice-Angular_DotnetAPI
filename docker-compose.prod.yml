@@ -1,10 +1,17 @@
-services:
+version: "3.8"
 
+services:
   api:
-    image: ghcr.io/company/demo-api:latest
+    build: null
+    image: ghcr.io/company/demo-api:prod
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       Jwt__RefreshCookieSecure: "true"
 
   frontend:
-    image: ghcr.io/company/demo-frontend:latest
+    build: null
+    image: ghcr.io/company/demo-frontend:prod
+
+  pgadmin:
+    profiles:
+      - tools
