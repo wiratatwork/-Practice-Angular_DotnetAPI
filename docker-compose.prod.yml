@@ -2,16 +2,31 @@ version: "3.8"
 
 services:
   api:
-    build: null
     image: ghcr.io/wiratatwork/basic-app-backend:prod
+    container_name: demo-api
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       Jwt__RefreshCookieSecure: "true"
+    ports: []
+    networks:
+      - demo-network
 
   frontend:
-    build: null
     image: ghcr.io/wiratatwork/basic-app-frontend:prod
+    container_name: demo-frontend
+    ports: []
+    networks:
+      - demo-network
 
   pgadmin:
+    image: dpage/pgadmin4
+    container_name: demo-pgadmin
     profiles:
       - tools
+    ports: []
+    networks:
+      - demo-network
+
+networks:
+  demo-network:
+    external: true
