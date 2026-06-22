@@ -3,14 +3,14 @@ version: "3.8"
 services:
   api:
     build: null
-    image: ghcr.io/company/demo-api:prod
+    image: ghcr.io/wiratatwork/basic-app-backend:prod
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       Jwt__RefreshCookieSecure: "true"
 
   frontend:
     build: null
-    image: ghcr.io/company/demo-frontend:prod
+    image: ghcr.io/wiratatwork/basic-app-frontend:prod
 
   pgadmin:
     profiles:

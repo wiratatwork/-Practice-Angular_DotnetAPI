@@ -3,11 +3,11 @@ version: "3.8"
 services:
   api:
     build: null
-    image: ghcr.io/company/demo-api:test
+    image: ghcr.io/wiratatwork/basic-app-backend:test
     environment:
       ASPNETCORE_ENVIRONMENT: Testing
       Jwt__RefreshCookieSecure: "false"
 
   frontend:
     build: null
-    image: ghcr.io/company/demo-frontend:test
+    image: ghcr.io/wiratatwork/basic-app-frontend:test
