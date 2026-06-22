@@ -1,9 +1,13 @@
-services:
+version: "3.8"
 
+services:
   api:
+    build: null
     image: ghcr.io/company/demo-api:test
     environment:
       ASPNETCORE_ENVIRONMENT: Testing
+      Jwt__RefreshCookieSecure: "false"
 
   frontend:
+    build: null
     image: ghcr.io/company/demo-frontend:test
