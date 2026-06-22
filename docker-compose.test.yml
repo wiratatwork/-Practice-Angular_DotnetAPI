@@ -11,3 +11,7 @@ services:
   frontend:
     build: null
     image: ghcr.io/wiratatwork/basic-app-frontend:test
+    
+  pgadmin:
+    profiles:
+      - tools
