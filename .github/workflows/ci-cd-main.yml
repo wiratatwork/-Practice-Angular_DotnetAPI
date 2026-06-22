@@ -1,9 +1,11 @@
 name: CI/CD - Build & Push to GHCR (main branch)
 
 on:
-  pull_request:
+  push:
     branches:
       - main
+
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -88,3 +90,28 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo "${{ steps.meta-frontend.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
+  deploy-prod:
+    name: Deploy to Production
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+
+          script: |
+            cd ~/basic_app
+
+            docker login ghcr.io \
+              -u ${{ secrets.GHCR_USERNAME }} \
+              -p ${{ secrets.GHCR_TOKEN }}
+
+            docker compose -f docker-compose.prod.yml pull
+
+            docker compose -f docker-compose.prod.yml up -d
+
+            docker image prune -f
