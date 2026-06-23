@@ -93,6 +93,87 @@ docker compose down -v
 
 ---
 
+## วิธีรัน Container ตามไฟล์ Compose
+
+### 1) รันด้วย `docker-compose.yml` (base/default)
+
+เหมาะกับการรันแบบมาตรฐานในเครื่องที่มี source code และต้องการ build image จากโปรเจกต์นี้โดยตรง
+
+```bash
+docker compose -f docker-compose.yml up --build -d
+```
+
+หยุดการรัน:
+
+```bash
+docker compose -f docker-compose.yml down
+```
+
+---
+
+### 2) รันแบบ Development ด้วย `docker-compose.dev.yml` (override จาก base)
+
+ไฟล์ `docker-compose.dev.yml` จะ override บางค่าใน base เช่น:
+- ใช้ `Dockerfile.dev`
+- mount source code เข้า container
+- เปลี่ยนพอร์ต frontend เป็น `4201:4200` สำหรับ dev server
+
+คำสั่งรัน:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d
+```
+
+ดู log สำหรับโหมด dev:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
+```
+
+หยุดการรัน:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down
+```
+
+---
+
+### 3) รันบน VM แบบ Production ด้วย `docker-compose.prod.yml`
+
+เหมาะกับ VM ที่ deploy จริง โดยใช้ image จาก GHCR (ไม่ build ในเครื่อง VM)
+
+เตรียมก่อนรัน:
+1. สร้างไฟล์ `.env` บน VM ให้มีค่า `POSTGRES_PASSWORD`, `DB_CONNECTION`, `JWT_KEY`
+2. login GHCR
+
+```bash
+docker login ghcr.io -u <ghcr-username> -p <ghcr-token>
+```
+
+รัน/อัปเดตเวอร์ชันล่าสุด:
+
+```bash
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+```
+
+หยุดการรัน:
+
+```bash
+docker compose -f docker-compose.prod.yml down
+```
+
+หมายเหตุ production:
+- `frontend` และ `api` bind พอร์ตเป็น `127.0.0.1` เพื่อไม่เปิดให้เข้าตรงจากภายนอก
+- ควรให้ Nginx (reverse proxy) เป็นตัวรับ public traffic ผ่าน `80/443`
+- หลัง deploy สามารถเก็บ image เก่าที่ไม่ใช้งานได้ด้วย:
+
+```bash
+docker image prune -f
+```
+
+---
+
 ## URL ทั้งหมด
 
 | Service        | URL                                      | หมายเหตุ                    |
