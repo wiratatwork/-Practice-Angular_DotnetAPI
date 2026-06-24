@@ -1,0 +1,110 @@
+name: Reusable Build and Push
+
+on:
+  workflow_call:
+    inputs:
+      push_images:
+        type: boolean
+        required: true
+      deployment_target:
+        type: string
+        required: true
+        description: "test or prod — controls image tag strategy"
+    outputs:
+      backend_tags:
+        description: "Backend image tags pushed or built"
+        value: ${{ jobs.build-and-push.outputs.backend_tags }}
+      frontend_tags:
+        description: "Frontend image tags pushed or built"
+        value: ${{ jobs.build-and-push.outputs.frontend_tags }}
+      short_sha:
+        description: "Short git SHA used for image tags"
+        value: ${{ jobs.build-and-push.outputs.short_sha }}
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_OWNER: ${{ github.repository_owner }}
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      backend_tags: ${{ steps.meta-backend.outputs.tags }}
+      frontend_tags: ${{ steps.meta-frontend.outputs.tags }}
+      short_sha: ${{ steps.vars.outputs.short_sha }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set short SHA
+        id: vars
+        run: echo "short_sha=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Extract metadata for backend image
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/basic-app-backend
+          tags: |
+            ${{ inputs.deployment_target == 'prod' && 'type=raw,value=prod' || 'type=ref,event=branch' }}
+            type=sha,prefix=sha-,format=short
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          dockerfile: ./backend/Dockerfile
+          push: ${{ inputs.push_images }}
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Extract metadata for frontend image
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/basic-app-frontend
+          tags: |
+            ${{ inputs.deployment_target == 'prod' && 'type=raw,value=prod' || 'type=ref,event=branch' }}
+            type=sha,prefix=sha-,format=short
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          dockerfile: ./frontend/Dockerfile
+          push: ${{ inputs.push_images }}
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Print image summary
+        if: inputs.push_images
+        run: |
+          echo "## Images pushed to GHCR (${{ inputs.deployment_target }})" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "### Backend" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ steps.meta-backend.outputs.tags }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "### Frontend" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "${{ steps.meta-frontend.outputs.tags }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

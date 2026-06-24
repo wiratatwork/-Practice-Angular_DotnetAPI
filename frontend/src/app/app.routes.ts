@@ -6,15 +6,15 @@ import { AppShellComponent } from './layout/app-shell.component';
 import { authGuard } from './auth/auth.guard';
 
 export const routes: Routes = [
-    { path: 'login', component: LoginComponent },
-    {
-        path: '',
-        component: AppShellComponent,
-        canActivate: [authGuard],
-        children: [
-            { path: '', component: HomeComponent },
-            { path: 'machine', component: MachineComponent },
-        ],
-    },
-    { path: '**', redirectTo: '' },
+  { path: 'login', component: LoginComponent },
+  {
+    path: '',
+    component: AppShellComponent,
+    canActivate: [authGuard],
+    children: [
+      { path: '', component: HomeComponent },
+      { path: 'machine', component: MachineComponent },
+    ],
+  },
+  { path: '**', redirectTo: '' },
 ];

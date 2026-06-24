@@ -132,10 +132,11 @@ namespace backend.Controllers
                     .FirstOrDefaultAsync(m => m.MachineNo.ToLower() == normalizedMachineNo);
                 if (existingMachine != null)
                 {
-                    return BadRequest(new { 
-                        message = "MachineNo already exists", 
+                    return BadRequest(new
+                    {
+                        message = "MachineNo already exists",
                         code = "MACHINE_NO_DUPLICATE",
-                        existingMachineNo = existingMachine.MachineNo 
+                        existingMachineNo = existingMachine.MachineNo
                     });
                 }
 

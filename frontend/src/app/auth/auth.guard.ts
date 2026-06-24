@@ -4,14 +4,14 @@ import { map } from 'rxjs';
 import { AuthService } from './auth.service';
 
 export const authGuard: CanActivateFn = () => {
-    const authService = inject(AuthService);
-    const router = inject(Router);
+  const authService = inject(AuthService);
+  const router = inject(Router);
 
-    if (authService.isLoggedIn()) {
-        return true;
-    }
+  if (authService.isLoggedIn()) {
+    return true;
+  }
 
-    return authService.initializeSession().pipe(
-        map((success) => (success ? true : router.createUrlTree(['/login']))),
-    );
+  return authService
+    .initializeSession()
+    .pipe(map((success) => (success ? true : router.createUrlTree(['/login']))));
 };

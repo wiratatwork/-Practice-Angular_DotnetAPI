@@ -1,62 +1,173 @@
-เปลี่ยน image ใน docker-compose.test.yml
-[ใช้ Image ที่ Build แล้วจาก GHCR แทน]
-ทำไมใน test และ prod ไม่มี postgres
-[เพราะใช้วิธี Override มาจาก docker-compose.yml (ไฟล์ Base)]
-Amazon RDS คืออะไร ทำไมถึงแทนที่ PostgreSQL Container ได้
-[Amazon Relational Database System เป็น Database ที่ AWS ดูแลแทนให้ทั้งหมด เช่น Backup, Monitor, Replica]
-GHCR (GitHub Container Registry) คืออะไร
-[ที่จัดเก็บ Container Images ของ Github]
-แนะนำ Ruleset ที่นิยมตั้ง
-[Restrict updates = บังคับเข้า PR เท่านั้น
-Restrict deletions = ห้ามลบ main
-Required a pull request before merging = บังคับ Merge ผ่าน Pull Request
-Block force pushes = ป้องกัน Push แบบ force
-Require status checks to pass = ต้องให้ Github Actions ผ่าน
-Require branches to be up to date before merging = บังคับให้ Dev ต้อง Rebase ไปแก้ใน Branch feature ก่อนเสมอ]
-ทำไมต้อง SSH ไปติดตั้ง Up Docker ใน VM เอง
-[ครั้งแรกเท่านั้น เพื่อดึง GHCR Images]
-จะตรวจสอบอย่างไรว่าเรามี Images ใดบน GHCR บ้าง
-[ดูจาก GitHub -> Profile -> Packages]
-สามารถตั้งค่าให้ใคร Approve PR ได้
-[สามารถทำได้บน Github Organization ส่วน Personal Repo สามารถกำหนดได้เพียงจำนวน Approval เท่านั้น]
-ต้องมี 2 VM สำหรับแต่ละ Env ใช่หรือไม่
-[ใช่]
-ในแต่ละ VM จะรันทั้ง 4 Containers ใช่หรือไม่
-[ใช่ หรือสามารถแยก PostgresQL มาใช้บริการ RDS ของ Cloud Provider ได้]
-อธิบายหลักการทำงานของ SSH Key
-[Gen Public / Private Key -> ส่ง Public Key เข้า VM -> เมื่อ SSH VM ส่ง Challenge ให้ Client ประทับตราได้ Signature และส่ง Signature ให้ VM Verify]
-ทำไมเราสามารถเข้า SSH เครื่องได้ โดยมีไฟล์ SSH key ในเครื่อง Host
-[Client ประทับตรา Challenge ด้วย Private Key และส่งให้ Server ที่มี Public Key Verify]
-ใน VM Prod คำสั่ง  docker compose -f docker-compose.yml -f docker-compose.prod.yml pull ทำอะไร
-[ดึง Images จาก docker-compose และ Override ด้วย docker-compose.prod]
-DNS record A คืออะไร
-[A = Address บอกว่า Domain นี้ชี้ไปยัง IP Address ใด]
-DNS คืออะไร ทั่วโลกใช้ Server เดียวกันไหม อย่างไร มีโอกาสที่ domain เดียวกัน จะชี้ Ip address คนละตัวเมื่ออยู่ต่างประเทศกันไหม
-[Domain Name System ระบบค้นหา IP Address มีหลาย Server และมีโอกาสที่ต่างประเทศกัน จะได้ IP ต่างกัน เพื่อคนหา Server ที่ใกล้ที่สุด]
-Host @ คือไม่ต้องกรอกอะไรใน URL ใช่หรือไม่ แล้วมีค่าอื่น ๆ ที่นิยมใช้อีกหรือไม่
-[ใช่ อื่น ๆ ที่นิยมเช่น www]
-TTL คืออะไร ตั้งไว้ 1 สัปดาห์มีผลอย่างไร
-[ระยะเวลาที่ให้ DNS Server Cache IP ไว้ เพื่อไม่ต้องค้นหาใหม่ หากตั้งไว้นาน เมื่อเปลี่ยน IP User อาจได้เลข IP เก่า]
-ipconfig /flushdns ทำหน้าที่อะไร
-[ล้าง Cache IP Address บนเครื่อง ให้ไปถาม DNS Server ใหม่]
-certbot คืออะไร เอาไว้ทำอะไร
-[ขอ ติดตั้ง ต่ออายุ SSL/TSL Certificate]
-ทำไมต้องติดตั้ง SSL/TSL Certificate
-[เอกสาร Ditital ที่ออกโดยองค์กรกลาง เช่น Let's Encrypt เมื่อ User เข้าผ่าน URL -> Browser ขอ SSL/TSL Certiciate ในนั้นจะบอกว่า Cert เป็นของ Domain นั้นจริง ๆ หรือไม่ และ Cert ก็ทำหน้าที่ Encrypt ข้อมูลระหว่าง Client Server ด้วย
-SSL/TLS Certificate คือเอกสารดิจิทัลที่ออกโดยองค์กรกลาง (Certificate Authority เช่น Let's Encrypt) เพื่อยืนยันว่าเว็บไซต์เป็นเจ้าของ Domain นั้นจริง เมื่อผู้ใช้เข้าเว็บไซต์ Browser จะตรวจสอบความถูกต้องของ Certificate หากผ่านการตรวจสอบ ทั้ง Client และ Server จะสร้างกุญแจเข้ารหัสร่วมกัน (Session Key) แล้วใช้กุญแจนี้เข้ารหัสข้อมูลทั้งหมดที่รับส่งระหว่างกัน ทำให้ข้อมูลไม่สามารถถูกดักอ่านหรือแก้ไขได้ระหว่างทาง]
-http กับ https ส่งผลต่อความปลอดภัยอย่างไร
-[https เข้ารหัสข้อมูล และยืนยันว่า Domain มีความน่าเชื่อถือ เพราะมีเอกสารยืนยันจาก CA]
-ทำไมต้องซื้อ Certificate ทั้งๆที่ก็มี Certbot
-[Cert ที่เข้ารหัสได้รัดกุมกว่า ต่ออายุได้นานกว่า ปกติ 90 วัน หรือมีค่าประกันกรณีถูกดักจับข้อมูล]
-docker image prune -f คืออะไร
-[ลบ Images ที่ไม่ได้ใช้งาน ประหยัดพื้นที่ Disk]
-วิธีนี้ (GitHub action) ส่งให้กระทบต่อผู้ใช้งานอย่างไร
-[Downtime สั้น ๆ Long Request อาจถูกตัด หรือ Code 502]
-https ใช้ port 443 ใช่ไหม
-[ใช่]
-VM กับ VPS คือสิ่งเดียวกันไหม
-[เกือบเป็นสิ่งเดียวกัน VPS คือ VM ที่มาจากผู้ให้บริการ แต่ VM อาจมาจากการตั้ง Local ได้ด้วย]
-ด้วยการเข้าแบบ SSH Key จะเข้าด้วย Computer เครื่องอื่นได้อย่างไร โดยมี 2 กรณี คือ Copy Private Key ไป และไม่ให้ Private Key
-[ควรสร้าง SSH Key คู่ใหม่ และเพิ่ม Public Key ใน VM]
-สามารถมี Public Key ใน VM มากกว่า 1 Key ไหม ถ้าได้ หมายความว่าถ้ามีไฟล์ Private Key คู่ใดก็ได้ในเครื่องเรา ก็จะเข้าได้ใช่ไหม
-[ใช่]
+# CI/CD Guide — Basic App
+
+เอกสารนี้อธิบาย pipeline CI/CD ปัจจุบันของโปรเจกต์ (Phase 1–4) และขั้นตอนตั้งค่า GitHub ที่ต้องทำด้วยมือ
+
+---
+
+## Pipeline Overview
+
+```mermaid
+flowchart TB
+    subgraph pr [PR หรือ push test/main]
+        CI[reusable-ci.yml]
+        CI --> LintFE[Lint Frontend]
+        CI --> TestFE[Test Frontend]
+        CI --> LintBE[Lint Backend]
+        CI --> TestBE[Test Backend]
+        CI --> IntBE[Integration Backend + Postgres]
+    end
+
+    subgraph testCd [push test]
+        BuildTest[reusable-build-push test]
+    end
+
+    subgraph prodCd [push main]
+        BuildProd[reusable-build-push prod]
+        Trivy[Trivy Scan]
+        Approve[Environment: production]
+        Deploy[deploy-prod.sh SSH]
+        Smoke[Smoke Test]
+        BuildProd --> Trivy --> Approve --> Deploy --> Smoke
+    end
+
+    pr --> testCd
+    pr --> prodCd
+```
+
+---
+
+## Workflows
+
+| ไฟล์ | Trigger | หน้าที่ |
+|---|---|---|
+| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | PR + push → `main`, `test` | Quality gate เท่านั้น |
+| [`.github/workflows/ci-cd-test.yml`](.github/workflows/ci-cd-test.yml) | push/PR → `test` | CI → build image (push เฉพาะ push event) |
+| [`.github/workflows/ci-cd-main.yml`](.github/workflows/ci-cd-main.yml) | push → `main` | CI → build → Trivy → deploy → smoke |
+| [`.github/workflows/codeql.yml`](.github/workflows/codeql.yml) | PR/push + schedule | SAST (C# + TypeScript) |
+| [`.github/dependabot.yml`](.github/dependabot.yml) | weekly | อัปเดต npm, NuGet, Actions |
+
+### Reusable workflows
+
+- [`reusable-ci.yml`](.github/workflows/reusable-ci.yml) — lint, unit test, integration test
+- [`reusable-build-push.yml`](.github/workflows/reusable-build-push.yml) — build/push Docker images ไป GHCR
+
+---
+
+## Branch Protection (ตั้งด้วยมือบน GitHub)
+
+ไปที่ **Settings → Rules → Rulesets** (หรือ Branch protection rules)
+
+### สำหรับ `main`
+
+- ห้าม push ตรง (Require pull request)
+- ต้องมี approval อย่างน้อย 1 คน
+- Block force push
+- **Require status checks to pass** — เลือก checks เหล่านี้จาก workflow `CI`:
+  - `Lint Frontend`
+  - `Test Frontend`
+  - `Lint Backend`
+  - `Test Backend`
+  - `Integration Backend`
+- Require branches to be up to date before merging
+
+### สำหรับ `test`
+
+- Require pull request
+- Require status checks (ชุดเดียวกับ `CI` ด้านบน)
+
+> ชื่อ check อาจแสดงเป็น `CI / Lint Frontend` ขึ้นกับชื่อ workflow ใน GitHub Actions UI
+
+---
+
+## GitHub Environment (Production)
+
+ไปที่ **Settings → Environments → New environment** ชื่อ `production`
+
+- เปิด **Required reviewers** (อย่างน้อย 1 คน)
+- จำกัด deployment branch เป็น `main` เท่านั้น
+- (Optional) ตั้ง **Environment variable** `PROD_URL` เป็น URL production สำหรับแสดงใน deployment log
+
+### Secrets ที่ต้องมี
+
+| Secret | ใช้ทำอะไร |
+|---|---|
+| `PROD_HOST` | IP/hostname ของ VM |
+| `PROD_USER` | SSH user |
+| `PROD_SSH_KEY` | Private key สำหรับ SSH |
+| `GHCR_USERNAME` | Username สำหรับ `docker login` บน VM |
+| `GHCR_TOKEN` | PAT สำหรับ pull images จาก GHCR |
+
+---
+
+## Production Deploy Flow
+
+1. Merge PR เข้า `main`
+2. `ci-cd-main.yml` รัน CI ทั้งหมด
+3. Build + push images tag `prod` และ `sha-<short>` ไป GHCR
+4. Trivy scan images (CRITICAL/HIGH, `ignore-unfixed: true`)
+5. รอ approval ใน Environment `production`
+6. SCP [`scripts/deploy-prod.sh`](scripts/deploy-prod.sh) ไป VM แล้วรัน rolling deploy:
+   - pull images
+   - `up -d --no-deps --wait api` ก่อน
+   - `up -d --no-deps --wait frontend` ทีหลัง
+7. Smoke test: `curl /health` และ frontend บน `127.0.0.1`
+
+[`docker-compose.prod.yml`](docker-compose.prod.yml) มี `healthcheck` บน `api` และ `frontend` รอ `api` healthy ก่อน start
+
+---
+
+## Rollback
+
+ใช้ image tag `sha-<commit>` ที่ push ไว้ใน GHCR แล้ว:
+
+```bash
+cd ~/basic_app
+
+# แก้ docker-compose.prod.yml ชั่วคราว หรือ override tag
+export BACKEND_TAG=sha-abc1234   # commit ที่ต้องการ rollback
+export FRONTEND_TAG=sha-abc1234
+
+# หรือแก้ image line ใน compose แล้ว:
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d --no-deps --wait api
+docker compose -f docker-compose.prod.yml up -d --no-deps --wait frontend
+```
+
+---
+
+## รัน Tests ในเครื่อง
+
+```bash
+# Frontend
+cd frontend
+npm ci
+npm run lint
+npm test -- --watch=false
+
+# Backend unit tests
+dotnet test --filter "FullyQualifiedName!~Integration"
+
+# Backend integration tests (ต้องมี Postgres ที่ localhost:5432)
+$env:TEST_DB_CONNECTION="Host=localhost;Port=5432;Database=demo;Username=sa;Password=test"
+dotnet test --filter "FullyQualifiedName~Integration"
+```
+
+---
+
+## Q&A เดิม (อ้างอิงด่วน)
+
+เปลี่ยน image ใน docker-compose.test.yml → ใช้ Image จาก GHCR tag `test`
+
+ทำไม test/prod compose ไม่มี postgres → override จาก docker-compose.yml base (หรือใช้ RDS)
+
+GHCR → GitHub Container Registry เก็บ Docker images
+
+Ruleset ที่นิยม → Restrict direct push, require PR, require status checks, block force push
+
+SSH deploy → ครั้งแรก setup VM + `.env` หลังจากนั้น CI pull images อัตโนมัติ
+
+docker image prune -f → ลบ images ที่ไม่ใช้ ประหยัด disk
+
+Deploy กระทบ user → downtime สั้น (rolling deploy ลดผลกระทบ แต่ยังไม่ใช่ zero-downtime เต็มรูปแบบ)
+
+ดู images บน GHCR → GitHub Profile → Packages
