@@ -84,6 +84,7 @@ jobs:
           --health-retries 5
     env:
       TEST_DB_CONNECTION: Host=localhost;Port=5432;Database=demo;Username=sa;Password=test
+      ConnectionStrings__DefaultConnection: Host=localhost;Port=5432;Database=demo;Username=sa;Password=test
     steps:
       - uses: actions/checkout@v4
 
