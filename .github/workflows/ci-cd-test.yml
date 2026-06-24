@@ -27,6 +27,9 @@ jobs:
   build-and-push:
     name: Build & Push Docker Images
     needs: ci
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/reusable-build-push.yml
     with:
       push_images: ${{ github.event_name == 'push' }}
