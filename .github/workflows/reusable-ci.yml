@@ -1,0 +1,95 @@
+name: Reusable CI
+
+on:
+  workflow_call:
+
+jobs:
+  lint-frontend:
+    name: Lint Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+
+  test-frontend:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm test -- --watch=false
+
+  lint-backend:
+    name: Lint Backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - run: dotnet format --verify-no-changes
+        working-directory: backend
+
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - run: dotnet test --filter "FullyQualifiedName!~Integration" --verbosity normal
+
+  integration-backend:
+    name: Integration Backend
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sa
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: demo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sa -d demo"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEST_DB_CONNECTION: Host=localhost;Port=5432;Database=demo;Username=sa;Password=test
+      ConnectionStrings__DefaultConnection: Host=localhost;Port=5432;Database=demo;Username=sa;Password=test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - run: dotnet test --filter "FullyQualifiedName~Integration" --verbosity normal

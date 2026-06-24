@@ -51,6 +51,13 @@ services:
     ports:
       - "127.0.0.1:5001:5001"
 
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5001/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
     networks:
       - demo-network
 
@@ -60,7 +67,8 @@ services:
     restart: unless-stopped
 
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
     ports:
       - "127.0.0.1:4200:80"
