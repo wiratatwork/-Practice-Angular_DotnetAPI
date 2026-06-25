@@ -24,7 +24,7 @@ services:
       retries: 5
 
   api:
-    image: ghcr.io/wiratatwork/basic-app-backend:prod
+    image: ${BACKEND_IMAGE:-ghcr.io/wiratatwork/basic-app-backend:prod}
     container_name: demo-api
     restart: unless-stopped
 
@@ -62,7 +62,7 @@ services:
       - demo-network
 
   frontend:
-    image: ghcr.io/wiratatwork/basic-app-frontend:prod
+    image: ${FRONTEND_IMAGE:-ghcr.io/wiratatwork/basic-app-frontend:prod}
     container_name: demo-frontend
     restart: unless-stopped
 
@@ -72,6 +72,13 @@ services:
 
     ports:
       - "127.0.0.1:4200:80"
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
     networks:
       - demo-network
