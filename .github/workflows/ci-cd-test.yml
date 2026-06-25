@@ -20,7 +20,7 @@ jobs:
     uses: ./.github/workflows/reusable-ci.yml
 
   build-and-push:
-    name: Build & Push Docker Images
+    name: Build & Push Docker Images (test)
     needs: ci
     permissions:
       contents: read
