@@ -8,29 +8,29 @@
 
 ```mermaid
 flowchart TB
-    subgraph pr [PR หรือ push test/main]
+    subgraph testFlow [push test]
+        CI_Test[reusable-ci.yml]
+    end
+
+    subgraph prMain [PR test to main]
         CI[reusable-ci.yml]
         CI --> LintFE[Lint Frontend]
         CI --> TestFE[Test Frontend]
         CI --> LintBE[Lint Backend]
         CI --> TestBE[Test Backend]
         CI --> IntBE[Integration Backend + Postgres]
-    end
-
-    subgraph testCd [push test]
-        BuildTest[reusable-build-push test]
+        BuildProd[reusable-build-push prod]
+        Trivy[Trivy Scan]
+        CI --> BuildProd --> Trivy
     end
 
     subgraph prodCd [push main]
-        BuildProd[reusable-build-push prod]
-        Trivy[Trivy Scan]
         Approve[Environment: production]
         Deploy[deploy-prod.sh SSH]
-        BuildProd --> Trivy --> Approve --> Deploy
+        Approve --> Deploy
     end
 
-    pr --> testCd
-    pr --> prodCd
+    prMain --> prodCd
 ```
 
 ---
@@ -40,8 +40,8 @@ flowchart TB
 | ไฟล์ | Trigger | หน้าที่ |
 |---|---|---|
 | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | PR + push → `main`, `test` | Quality gate เท่านั้น |
-| [`.github/workflows/ci-cd-test.yml`](.github/workflows/ci-cd-test.yml) | push/PR → `test` | CI → build image (push เฉพาะ push event) |
-| [`.github/workflows/ci-cd-main.yml`](.github/workflows/ci-cd-main.yml) | push → `main` | CI → build → Trivy → deploy (smoke + auto-rollback) |
+| [`.github/workflows/ci-cd-test.yml`](.github/workflows/ci-cd-test.yml) | push → `test` | CI → build/push image tag `test` → Trivy scan |
+| [`.github/workflows/ci-cd-main.yml`](.github/workflows/ci-cd-main.yml) | PR → `main`, push → `main`, manual | CI → build → Trivy; และ deploy เฉพาะ push/manual |
 | [`.github/workflows/codeql.yml`](.github/workflows/codeql.yml) | PR/push + schedule | SAST (C# + TypeScript) |
 | [`.github/dependabot.yml`](.github/dependabot.yml) | weekly | อัปเดต npm, NuGet, Actions |
 
@@ -101,17 +101,16 @@ flowchart TB
 ## Production Deploy Flow
 
 1. Merge PR เข้า `main`
-2. `ci-cd-main.yml` รัน CI ทั้งหมด
-3. Build + push images tag `prod` และ `sha-<short>` ไป GHCR
-4. Trivy scan images (CRITICAL/HIGH, `ignore-unfixed: true`)
-5. รอ approval ใน Environment `production`
-6. SCP [`scripts/`](scripts/) (`deploy-prod.sh`, `rollback-prod.sh`, `smoke-test.sh`) ไป VM แล้วรัน deploy:
+2. `ci-cd-main.yml` รัน `CI -> Build & Push (prod tags) -> Trivy` ทั้งตอน PR (`test -> main`) และหลัง merge commit (`push main`)
+3. ขั้น `deploy-prod` จะรันเฉพาะตอน `push main` (หลัง merge) หรือ `workflow_dispatch`
+4. รอ approval ใน Environment `production`
+5. SCP [`scripts/`](scripts/) (`deploy-prod.sh`, `rollback-prod.sh`, `smoke-test.sh`) ไป VM แล้วรัน deploy:
    - อ่าน rollback target จาก `~/basic_app/.last-good-deploy` (ถ้ามี)
    - pull images tag `:prod`
    - `up -d --no-deps --wait api` ก่อน
    - `up -d --no-deps --wait frontend` ทีหลัง
    - smoke test (`smoke-test.sh`): retry 5 ครั้ง, sleep 5 วินาที, ตรวจ HTTP 200 ที่ `127.0.0.1:5001/health` และ `127.0.0.1:4200/`
-   - ถ้า smoke ผ่าน: บันทึก `sha-<commit>` ลง `.last-good-deploy` แล้ว `docker image prune`
+   - ถ้า smoke ผ่าน: cleanup images ด้วย `docker image prune`
    - ถ้า smoke fail: รัน `rollback-prod.sh` อัตโนมัติ (workflow ยัง fail แม้ rollback สำเร็จ)
 
 [`docker-compose.prod.yml`](docker-compose.prod.yml) มี `healthcheck` บน `api` และ `frontend` รอ `api` healthy ก่อน start

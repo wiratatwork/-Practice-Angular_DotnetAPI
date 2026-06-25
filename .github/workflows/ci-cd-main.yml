@@ -1,6 +1,16 @@
 name: CI/CD - Build & Push to GHCR (main branch)
 
 on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "backend.Tests/**"
+      - "docker-compose.prod.yml"
+      - "scripts/**"
+      - ".github/workflows/**"
   push:
     branches:
       - main
@@ -71,6 +81,7 @@ jobs:
 
   deploy-prod:
     name: Deploy to Production
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     needs: [build-and-push, trivy-scan]
     runs-on: ubuntu-latest
     environment:
