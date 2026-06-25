@@ -26,8 +26,7 @@ flowchart TB
         Trivy[Trivy Scan]
         Approve[Environment: production]
         Deploy[deploy-prod.sh SSH]
-        Smoke[Smoke Test]
-        BuildProd --> Trivy --> Approve --> Deploy --> Smoke
+        BuildProd --> Trivy --> Approve --> Deploy
     end
 
     pr --> testCd
@@ -42,7 +41,7 @@ flowchart TB
 |---|---|---|
 | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | PR + push → `main`, `test` | Quality gate เท่านั้น |
 | [`.github/workflows/ci-cd-test.yml`](.github/workflows/ci-cd-test.yml) | push/PR → `test` | CI → build image (push เฉพาะ push event) |
-| [`.github/workflows/ci-cd-main.yml`](.github/workflows/ci-cd-main.yml) | push → `main` | CI → build → Trivy → deploy → smoke |
+| [`.github/workflows/ci-cd-main.yml`](.github/workflows/ci-cd-main.yml) | push → `main` | CI → build → Trivy → deploy (smoke + auto-rollback) |
 | [`.github/workflows/codeql.yml`](.github/workflows/codeql.yml) | PR/push + schedule | SAST (C# + TypeScript) |
 | [`.github/dependabot.yml`](.github/dependabot.yml) | weekly | อัปเดต npm, NuGet, Actions |
 
@@ -106,31 +105,50 @@ flowchart TB
 3. Build + push images tag `prod` และ `sha-<short>` ไป GHCR
 4. Trivy scan images (CRITICAL/HIGH, `ignore-unfixed: true`)
 5. รอ approval ใน Environment `production`
-6. SCP [`scripts/deploy-prod.sh`](scripts/deploy-prod.sh) ไป VM แล้วรัน rolling deploy:
-   - pull images
+6. SCP [`scripts/`](scripts/) (`deploy-prod.sh`, `rollback-prod.sh`, `smoke-test.sh`) ไป VM แล้วรัน deploy:
+   - อ่าน rollback target จาก `~/basic_app/.last-good-deploy` (ถ้ามี)
+   - pull images tag `:prod`
    - `up -d --no-deps --wait api` ก่อน
    - `up -d --no-deps --wait frontend` ทีหลัง
-7. Smoke test: `curl /health` และ frontend บน `127.0.0.1`
+   - smoke test (`smoke-test.sh`): retry 5 ครั้ง, sleep 5 วินาที, ตรวจ HTTP 200 ที่ `127.0.0.1:5001/health` และ `127.0.0.1:4200/`
+   - ถ้า smoke ผ่าน: บันทึก `sha-<commit>` ลง `.last-good-deploy` แล้ว `docker image prune`
+   - ถ้า smoke fail: รัน `rollback-prod.sh` อัตโนมัติ (workflow ยัง fail แม้ rollback สำเร็จ)
 
 [`docker-compose.prod.yml`](docker-compose.prod.yml) มี `healthcheck` บน `api` และ `frontend` รอ `api` healthy ก่อน start
 
 ---
 
-## Rollback
+## Auto Rollback
 
-ใช้ image tag `sha-<commit>` ที่ push ไว้ใน GHCR แล้ว:
+State file บน VM: `~/basic_app/.last-good-deploy`
+
+เก็บ image tag `sha-<commit>` ล่าสุดที่ deploy + smoke สำเร็จ:
+
+```
+BACKEND_IMAGE=ghcr.io/wiratatwork/basic-app-backend:sha-abc1234
+FRONTEND_IMAGE=ghcr.io/wiratatwork/basic-app-frontend:sha-abc1234
+DEPLOY_SHA=abc1234
+DEPLOYED_AT=2026-06-25T12:00:00Z
+```
+
+| สถานการณ์ | พฤติกรรม |
+|-----------|----------|
+| Deploy ครั้งแรก (ไม่มี state file) | smoke fail → exit 1, ไม่ rollback |
+| Deploy ใหม่ fail, มี state | `rollback-prod.sh` อัตโนมัติ → workflow **fail** (แดง) แม้ production กลับมาใช้งานได้ |
+| Rollback ก็ fail | exit 1 — ต้องแก้บน VM ด้วยมือ |
+
+### Manual rollback (ฉุกเฉิน)
 
 ```bash
 cd ~/basic_app
 
-# แก้ docker-compose.prod.yml ชั่วคราว หรือ override tag
-export BACKEND_TAG=sha-abc1234   # commit ที่ต้องการ rollback
-export FRONTEND_TAG=sha-abc1234
+export BACKEND_IMAGE=ghcr.io/wiratatwork/basic-app-backend:sha-abc1234
+export FRONTEND_IMAGE=ghcr.io/wiratatwork/basic-app-frontend:sha-abc1234
 
-# หรือแก้ image line ใน compose แล้ว:
-docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml pull api frontend
 docker compose -f docker-compose.prod.yml up -d --no-deps --wait api
 docker compose -f docker-compose.prod.yml up -d --no-deps --wait frontend
+./scripts/smoke-test.sh
 ```
 
 ---

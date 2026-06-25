@@ -81,13 +81,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Copy deploy script to VM
+      - name: Copy deploy scripts to VM
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.PROD_HOST }}
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
-          source: scripts/deploy-prod.sh
+          source: scripts/deploy-prod.sh,scripts/rollback-prod.sh,scripts/smoke-test.sh
           target: ~/basic_app/
 
       - name: Deploy via SSH
@@ -100,27 +100,10 @@ jobs:
           script: |
             cd ~/basic_app
             mkdir -p scripts
-            chmod +x scripts/deploy-prod.sh
+            chmod +x scripts/*.sh
 
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io \
               -u "${{ secrets.GHCR_USERNAME }}" \
               --password-stdin
 
-            ./scripts/deploy-prod.sh
-
-  smoke-test:
-    name: Smoke Test Production
-    needs: deploy-prod
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Smoke test via SSH
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.PROD_HOST }}
-          username: ${{ secrets.PROD_USER }}
-          key: ${{ secrets.PROD_SSH_KEY }}
-          script_stop: true
-          script: |
-            curl -fsS http://127.0.0.1:5001/health
-            curl -fsS http://127.0.0.1:4200/
+            DEPLOY_SHA="${{ needs.build-and-push.outputs.short_sha }}" ./scripts/deploy-prod.sh
