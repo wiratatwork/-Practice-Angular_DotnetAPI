@@ -39,33 +39,37 @@ namespace backend.Controllers
         [AllowAnonymous]
         public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
         {
-            var submittedUsername = request?.Username?.Trim();
+            var validationResults = new List<ValidationResult>();
+            if (!Validator.TryValidateObject(
+                    request,
+                    new ValidationContext(request),
+                    validationResults,
+                    validateAllProperties: true))
+            {
+                var errors = validationResults
+                    .Select(r => r.ErrorMessage)
+                    .Where(m => m != null)
+                    .ToList();
+                return BadRequest(new { message = "Validation failed", errors });
+            }
 
+            return await ExecuteLoginAsync(request.Username.Trim(), request.Password);
+        }
+
+        private async Task<ActionResult<LoginResponse>> ExecuteLoginAsync(string username, string password)
+        {
             try
             {
-                if (request == null)
-                {
-                    return BadRequest(new { message = "Login credentials are required" });
-                }
-
-                var validationContext = new ValidationContext(request);
-                var validationResults = new List<ValidationResult>();
-                if (!Validator.TryValidateObject(request, validationContext, validationResults, validateAllProperties: true))
-                {
-                    var errors = validationResults.Select(r => r.ErrorMessage).ToList();
-                    return BadRequest(new { message = "Validation failed", errors });
-                }
-
-                var normalizedUsername = submittedUsername!.ToLower();
+                var normalizedUsername = username.ToLower();
                 var user = await _context.Users
                     .FirstOrDefaultAsync(u => u.Username.ToLower() == normalizedUsername);
 
-                if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+                if (user == null || !BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
                 {
                     await _auditService.LogAsync(
                         AuthAuditEventTypes.LoginFailure,
                         succeeded: false,
-                        username: submittedUsername,
+                        username: username,
                         failureReason: "Invalid username or password");
 
                     return Unauthorized(new { message = "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง" });
@@ -100,7 +104,7 @@ namespace backend.Controllers
                 await _auditService.LogAsync(
                     AuthAuditEventTypes.LoginFailure,
                     succeeded: false,
-                    username: submittedUsername,
+                    username: username,
                     failureReason: "Internal server error");
                 return StatusCode(500, new { message = "Internal server error" });
             }
