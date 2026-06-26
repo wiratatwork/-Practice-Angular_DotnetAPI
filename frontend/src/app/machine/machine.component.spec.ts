@@ -252,9 +252,7 @@ describe('MachineComponent', () => {
     fixture.componentInstance.deleteMachine();
     fixture.detectChanges();
 
-    expect(fixture.componentInstance.errorMessage()).toBe(
-      'ไม่สามารถลบเครื่องจักรได้ กรุณาลองใหม่',
-    );
+    expect(fixture.componentInstance.errorMessage()).toBe('ไม่สามารถลบเครื่องจักรได้ กรุณาลองใหม่');
     expect(fixture.componentInstance.deleteConfirmMachineNo()).toBeNull();
   });
 });

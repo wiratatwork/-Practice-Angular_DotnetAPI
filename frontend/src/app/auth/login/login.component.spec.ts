@@ -121,8 +121,6 @@ describe('LoginComponent', () => {
     });
     fixture.componentInstance.submit();
 
-    expect(fixture.componentInstance.errorMessage()).toBe(
-      'ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่',
-    );
+    expect(fixture.componentInstance.errorMessage()).toBe('ไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่');
   });
 });
