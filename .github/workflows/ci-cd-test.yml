@@ -4,12 +4,6 @@ on:
   push:
     branches:
       - test
-    paths:
-      - "backend/**"
-      - "frontend/**"
-      - "backend.Tests/**"
-      - "docker-compose.test.yml"
-      - ".github/workflows/**"
 
 env:
   REGISTRY: ghcr.io

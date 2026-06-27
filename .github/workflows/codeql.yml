@@ -5,18 +5,10 @@ on:
     branches:
       - main
       - test
-    paths:
-      - "backend/**"
-      - "frontend/**"
-      - "backend.Tests/**"
   pull_request:
     branches:
       - main
       - test
-    paths:
-      - "backend/**"
-      - "frontend/**"
-      - "backend.Tests/**"
   schedule:
     - cron: "0 6 * * 1"
 
