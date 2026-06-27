@@ -7,16 +7,19 @@
 ต้องการให้การปล่อยระบบเป็น 2 ระดับดังนี้:
 
 1. โค้ดจากนักพัฒนาจะถูกรวมเข้า `test`
-2. เมื่อมีการเปลี่ยนแปลงบน `test` จะรัน CI/CD อัตโนมัติ
-3. หากผ่านเงื่อนไข จะ deploy ไปยัง Railway environment `test` อัตโนมัติ
-4. หัวหน้าหรือผู้รับผิดชอบทดสอบบน `test`
-5. เมื่อทดสอบเสร็จและอนุมัติ Pull Request เข้า `main`
-6. ระบบจะ deploy ไปยัง Railway environment `production` อัตโนมัติ
+2. เมื่อมีการ push เข้า `test` จะรัน CI/CD อัตโนมัติ — build Docker images และ push ไป GHCR (tag `:test`)
+3. ทีมดึง images จาก GHCR ไปรันบน test server ด้วย `docker-compose.test.yml` เพื่อทดสอบ
+4. หัวหน้าหรือผู้รับผิดชอบทดสอบบน test environment
+5. เมื่อทดสอบเสร็จและอนุมัติ Pull Request จาก `test` เข้า `main`
+6. ระบบจะ build images (tag `:prod`), สแกนช่องโหว่, และ deploy ไป production VM อัตโนมัติ
 
 ## ภาพรวม Flow
 
 ```text
-feature/* -> Pull Request -> test -> CI ผ่าน -> Auto Deploy to Railway Test
+feature/* -> Pull Request -> test -> push -> CI + Build + Push GHCR (:test) + Trivy
+                                                |
+                                                v
+                              ทีม pull images ไป test server (docker-compose.test.yml)
                                                 |
                                                 v
                                      หัวหน้าทดสอบและอนุมัติ
@@ -25,8 +28,19 @@ feature/* -> Pull Request -> test -> CI ผ่าน -> Auto Deploy to Railway T
                                    Pull Request test -> main
                                                 |
                                                 v
-                                 CI/Release ผ่าน -> Auto Deploy to Production
+                    CI + Build + Push GHCR (:prod) + Trivy -> Deploy VM + Smoke test
 ```
+
+## Infrastructure
+
+| ส่วน | เทคโนโลยี |
+|------|-----------|
+| Container Registry | GitHub Container Registry (GHCR) — `ghcr.io/<owner>/basic-app-backend`, `basic-app-frontend` |
+| Test environment | VM/เครื่องทดสอบ — รัน `docker-compose.test.yml` ดึง image tag `:test` |
+| Production environment | VM — รัน `docker-compose.prod.yml` ดึง image tag `:prod` (deploy ผ่าน GitHub Actions) |
+| CI/CD | GitHub Actions |
+| Static analysis | CodeQL (`.github/workflows/codeql.yml`) |
+| Image vulnerability scan | Trivy (`.github/workflows/reusable-trivy-scan.yml`) |
 
 ## Branch Strategy
 
@@ -44,155 +58,182 @@ feature/* -> Pull Request -> test -> CI ผ่าน -> Auto Deploy to Railway T
 
 ## Environment ที่ต้องมี
 
-ใน Railway ให้มีอย่างน้อย 2 environment:
+### Test server
 
-- `test`
-- `production`
+- รัน Docker Compose จาก `docker-compose.test.yml`
+- ใช้ images จาก GHCR tag `:test`
+- แยก database, secrets, และ URL จาก production
+
+### Production VM
+
+- รัน Docker Compose จาก `docker-compose.prod.yml`
+- ใช้ images จาก GHCR tag `:prod` และ `sha-<commit>` สำหรับ rollback
+- ค่า environment variables ตั้งบน VM (`.env`) — ไม่ commit ลง repository
 
 ข้อกำหนด:
 
-- ทั้ง 2 environment ต้องแยกค่า environment variables ออกจากกัน
-- database ของ `test` และ `production` ต้องไม่ใช้ชุดเดียวกัน
-- URL, API keys, และ secrets ของ production ต้องไม่ถูกใช้ใน `test`
+- database ของ test และ production ต้องไม่ใช้ชุดเดียวกัน
+- URL, API keys, และ secrets ของ production ต้องไม่ถูกใช้ใน test
 
-## พฤติกรรม CI/CD ที่ต้องการ
+## GitHub Actions Workflows
 
-### 1. เมื่อมีการ merge หรือ push เข้า `test`
+| Workflow | Trigger | สิ่งที่ทำ |
+|----------|---------|-----------|
+| [`ci-cd-test.yml`](.github/workflows/ci-cd-test.yml) | push → `test` | CI → build/push images `:test` → Trivy scan |
+| [`ci-cd-main.yml`](.github/workflows/ci-cd-main.yml) | PR/push → `main`, `workflow_dispatch` | CI → build/push images `:prod` → Trivy → deploy production VM |
+| [`codeql.yml`](.github/workflows/codeql.yml) | push/PR → `main`, `test` | CodeQL static analysis |
+| [`reusable-ci.yml`](.github/workflows/reusable-ci.yml) | workflow_call | Lint + unit/integration tests |
+| [`reusable-build-push.yml`](.github/workflows/reusable-build-push.yml) | workflow_call | Build และ push Docker images ไป GHCR |
+| [`reusable-trivy-scan.yml`](.github/workflows/reusable-trivy-scan.yml) | workflow_call | สแกนช่องโหว่ CRITICAL/HIGH ใน images |
 
-ระบบ CI/CD ต้องทำงานตามลำดับนี้:
+### Image tags ใน GHCR
 
-1. Checkout source code
-2. ติดตั้ง dependencies
-3. Build application
-4. Run tests
-5. Run lint หรือ validation ที่จำเป็น
-6. ถ้าทุกอย่างผ่าน ให้ deploy ไป Railway environment `test`
+- **test branch:** `basic-app-backend:test`, `basic-app-frontend:test` และ `sha-<short-commit>`
+- **main branch:** `basic-app-backend:prod`, `basic-app-frontend:prod` และ `sha-<short-commit>`
 
-ผลลัพธ์ที่ต้องการ:
+## พฤติกรรม CI/CD ที่เกิดขึ้นจริง
 
-- ทีมสามารถเข้าไปทดสอบระบบล่าสุดได้บน environment `test`
-- ถ้า CI ไม่ผ่าน ต้องไม่ deploy
+### 1. เมื่อ push เข้า `test`
 
-### 2. เมื่อ Pull Request จาก `test` ไป `main` ได้รับอนุมัติและ merge
+ลำดับงานใน [`ci-cd-test.yml`](.github/workflows/ci-cd-test.yml):
 
-ระบบ CI/CD ต้องทำงานตามลำดับนี้:
+1. **CI** — lint frontend/backend, unit tests, integration tests (PostgreSQL service)
+2. **Build & Push** — build Docker images และ push ไป GHCR tag `:test`
+3. **Trivy Scan** — สแกน backend/frontend images; fail ถ้าพบ CRITICAL/HIGH ที่ fix ได้
 
-1. Checkout source code จาก `main`
-2. ติดตั้ง dependencies
-3. Build application สำหรับ production
-4. Run tests/release checks ที่จำเป็น
-5. ถ้าทุกอย่างผ่าน ให้ deploy ไป Railway environment `production`
+**หมายเหตุ:** workflow นี้ **ไม่ deploy ไป test server อัตโนมัติ** — ทีมต้อง `docker compose pull` บน test server เองหลัง CI ผ่าน
 
-ผลลัพธ์ที่ต้องการ:
+### 2. เมื่อเปิด PR หรือ push เข้า `main`
 
-- production จะรับเฉพาะโค้ดที่ผ่านการทดสอบใน `test` แล้ว
-- ลดความเสี่ยงจากการ deploy ข้ามขั้นตอน
+ลำดับงานใน [`ci-cd-main.yml`](.github/workflows/ci-cd-main.yml):
+
+1. **CI** — lint + tests (รันทั้ง PR และ push)
+2. **Build & Push** — build และ push images tag `:prod` (PR: build อย่างเดียวตาม `push_images`; push จริงเมื่อ merge)
+3. **Trivy Scan** — สแกน images ก่อน deploy
+4. **Deploy to Production** — รันเฉพาะเมื่อ `push` หรือ `workflow_dispatch`:
+   - copy scripts ไป VM ผ่าน SCP
+   - SSH รัน [`scripts/deploy-prod.sh`](scripts/deploy-prod.sh)
+   - rolling update API แล้ว frontend
+   - smoke test ที่ `http://127.0.0.1:5001/health` และ `http://127.0.0.1:4200/`
+   - ถ้า smoke fail → rollback อัตโนมัติด้วย [`scripts/rollback-prod.sh`](scripts/rollback-prod.sh)
+   - บันทึก state ลง `~/.last-good-deploy` สำหรับ rollback ครั้งถัดไป
+
+Deploy job ใช้ GitHub Environment **`production`** และ `concurrency: deploy-production` (ไม่ cancel deploy ที่กำลังรัน)
+
+## Deploy Scripts
+
+| Script | หน้าที่ |
+|--------|---------|
+| [`scripts/deploy-prod.sh`](scripts/deploy-prod.sh) | pull images, rolling update, smoke test, auto rollback, บันทึก last-good state |
+| [`scripts/rollback-prod.sh`](scripts/rollback-prod.sh) | rollback ไป image ก่อนหน้า + verify smoke test |
+| [`scripts/smoke-test.sh`](scripts/smoke-test.sh) | ตรวจ HTTP health endpoints (retry 5 ครั้ง) |
 
 ## ผู้รับผิดชอบในแต่ละขั้น
 
-- นักพัฒนา:
+- **นักพัฒนา:**
   - พัฒนาใน branch งาน
   - เปิด Pull Request เข้า `test`
   - แก้ไข issue ที่ทำให้ CI ไม่ผ่าน
-- หัวหน้าหรือผู้ทดสอบ:
-  - ทดสอบบน Railway environment `test`
+- **หัวหน้าหรือผู้ทดสอบ:**
+  - ทดสอบบน test server (images จาก GHCR tag `:test`)
   - อนุมัติ Pull Request จาก `test` ไป `main`
-- ระบบ CI/CD:
-  - ตรวจสอบคุณภาพโค้ด
-  - deploy อัตโนมัติตาม branch เป้าหมาย
+- **ระบบ CI/CD:**
+  - ตรวจสอบคุณภาพโค้ดและช่องโหว่
+  - deploy production อัตโนมัติเมื่อ merge เข้า `main`
 
-## กฎที่ควรตั้งใน GitHub
+## กฎที่ตั้งใน GitHub (Ruleset)
 
-แนะนำให้ตั้งค่า branch protection ดังนี้
+### สำหรับ `main` (Ruleset: Protect Main Branch)
 
-### สำหรับ `test`
+- ห้าม push ตรง (Restrict updates) — ต้องผ่าน PR
+- บังคับ Pull Request + approval อย่างน้อย 1 คน
+- Dismiss stale approvals เมื่อมี commit ใหม่
+- ห้าม approve commit ที่ตัวเอง push
+- ต้อง resolve conversation ครบก่อน merge
+- บังคับ status checks ผ่านก่อน merge (CI jobs, Trivy, CodeQL)
+- บังคับ branch up-to-date กับ `main` ก่อน merge
+- ห้าม force push และห้ามลบ branch
 
-- อนุญาตให้ merge ผ่าน Pull Request
+### สำหรับ `test` (แนะนำ)
+
+- อนุญาต merge ผ่าน Pull Request
 - บังคับให้ CI checks ผ่านก่อน merge
-- แนะนำให้ห้าม push ตรง ยกเว้นผู้ดูแลระบบที่จำเป็น
-
-### สำหรับ `main`
-
-- ห้าม push ตรง
-- บังคับ Pull Request เท่านั้น
-- บังคับ approval อย่างน้อย 1 คนจากหัวหน้าหรือผู้รับผิดชอบ
-- บังคับให้ CI checks ผ่านก่อน merge
+- แนะนำให้ห้าม push ตรง ยกเว้นผู้ดูแลระบบ
 
 ## สิ่งที่ต้องตั้งค่าใน GitHub
 
-ควรมี GitHub Actions อย่างน้อย 2 workflow:
+### Repository Secrets
 
-1. `deploy-test`
-  - ทำงานเมื่อมี push ไปที่ `test`
-  - build, test, และ deploy ไป Railway `test`
-2. `deploy-production`
-  - ทำงานเมื่อมี push ไปที่ `main`
-  - build, test, และ deploy ไป Railway `production`
+| Secret | ใช้เมื่อ |
+|--------|----------|
+| `PROD_HOST` | SSH ไป production VM |
+| `PROD_USER` | SSH username |
+| `PROD_SSH_KEY` | SSH private key |
+| `GHCR_TOKEN` | VM login ดึง images จาก GHCR |
+| `GHCR_USERNAME` | username สำหรับ GHCR login บน VM |
 
-ควรเตรียม GitHub Secrets/Variables เช่น:
+### Repository Variables
 
-- `RAILWAY_TOKEN`
-- `RAILWAY_PROJECT_ID`
-- `RAILWAY_SERVICE_ID`
-- ค่าที่ใช้แยก environment หาก workflow ต้องอ้างอิงคนละ target
+| Variable | ใช้เมื่อ |
+|----------|--------|
+| `PROD_URL` | แสดง URL ใน GitHub Environment `production` |
+
+### GitHub Environment
+
+- **`production`** — ครอบ deploy job; สามารถเพิ่ม required reviewers ได้ใน Settings → Environments
+
+### Dependabot
+
+[`dependabot.yml`](.github/dependabot.yml) อัปเดต npm, NuGet, และ GitHub Actions รายสัปดาห์ — target branch `test`
 
 หมายเหตุ:
 
-- หาก `test` และ `production` ใช้ service หรือ project คนละตัว ให้แยก secrets ให้ชัดเจน
 - ไม่ควร hardcode secret ลงใน repository
-
-## สิ่งที่ต้องตั้งค่าใน Railway
-
-ต้องตรวจสอบให้พร้อมดังนี้:
-
-- มี environment `test` และ `production`
-- แต่ละ environment มี variables ครบถ้วน
-- ตั้งค่า domain หรือ URL แยกกันชัดเจน
-- รองรับการ deploy ผ่าน GitHub Actions หรือ Railway CLI
-
-ตัวอย่างชื่อค่าที่มักต้องแยก:
-
-- `ASPNETCORE_ENVIRONMENT`
-- `DATABASE_URL`
-- `JWT_SECRET`
-- `CORS_ORIGIN`
-- `API_BASE_URL`
+- ไฟล์ `.env` และ `GitHub Token.txt` อยู่ใน `.gitignore` แล้ว
 
 ## Release Policy
 
 กติกาการปล่อย production:
 
 - โค้ดที่จะขึ้น production ต้องมาจาก `test` เท่านั้น
-- ต้องผ่านการทดสอบบน Railway environment `test` ก่อน
+- ต้องผ่านการทดสอบบน test environment ก่อน
 - ต้องได้รับการอนุมัติ Pull Request ก่อน merge เข้า `main`
-- เมื่อ merge เข้า `main` แล้ว ระบบต้อง deploy production อัตโนมัติ
+- เมื่อ merge เข้า `main` แล้ว ระบบ deploy production อัตโนมัติ (หลัง CI + Trivy ผ่าน)
+- Production deploy ใช้ image tag `sha-<commit>` สำหรับ rollback; state เก็บใน `.last-good-deploy` บน VM
 
 ## ขั้นตอนการทำงานของทีม
 
 ### ฝั่งนักพัฒนา
 
-1. pull code ล่าสุดจาก branch ที่เกี่ยวข้อง
-2. สร้าง branch งานใหม่จาก `test` หรือแนวทาง branch ของทีม
-3. พัฒนาและทดสอบในเครื่อง
+1. pull code ล่าสุดจาก `test`
+2. สร้าง branch งานใหม่
+3. พัฒนาและทดสอบในเครื่อง (`docker compose up`)
 4. push branch งานขึ้น GitHub
 5. เปิด Pull Request เข้า `test`
-6. รอ CI ผ่าน
-7. merge เข้า `test`
+6. รอ CI ผ่าน → merge เข้า `test`
+7. แจ้งทีมให้ pull images ใหม่บน test server (ถ้าจำเป็น)
 
 ### ฝั่งหัวหน้าหรือผู้อนุมัติ
 
-1. เข้าใช้งานระบบบน Railway environment `test`
+1. ทดสอบบน test server (images tag `:test`)
 2. ทดสอบตาม checklist หรือ test scenario
 3. ถ้าผ่าน ให้ approve Pull Request จาก `test` ไป `main`
 4. merge เข้า `main`
-5. ตรวจสอบผลการ deploy production
+5. ตรวจสอบ GitHub Actions deploy job และ production URL
+
+### Deploy manual (กรณีฉุกเฉิน)
+
+- ใช้ **workflow_dispatch** บน workflow `CI/CD - Build & Push to GHCR (main branch)` เพื่อ trigger deploy ใหม่
+- Rollback บน VM: รัน `scripts/rollback-prod.sh` ด้วย `ROLLBACK_BACKEND_IMAGE` / `ROLLBACK_FRONTEND_IMAGE` จาก `.last-good-deploy`
 
 ## Definition of Done ก่อนขึ้น Production
 
 ก่อน merge เข้า `main` ต้องมีครบ:
 
 - CI บน `test` ผ่าน
-- deploy ไป `test` สำเร็จ
+- images `:test` ถูก push ไป GHCR และทดสอบบน test server แล้ว
+- Trivy scan ไม่พบ CRITICAL/HIGH ที่ fix ได้
+- CodeQL ไม่มี finding ที่ block (ถ้าเปิดใช้)
 - ทดสอบ business flow สำคัญแล้ว
 - ไม่มี bug blocker หรือ critical issue
 - Pull Request ได้รับ approval ตามสิทธิ์ที่กำหนด
@@ -200,17 +241,19 @@ feature/* -> Pull Request -> test -> CI ผ่าน -> Auto Deploy to Railway T
 ## ความเสี่ยงที่ต้องระวัง
 
 - ถ้าอนุญาตให้ push ตรงเข้า `main` อาจทำให้ bypass ขั้นตอนทดสอบ
-- ถ้า `test` กับ `production` ใช้ environment variables ชุดเดียวกัน อาจเกิดการปนกันของข้อมูล
-- ถ้า CI รันไม่ครบทั้ง build, test, และ validation ความเสี่ยงจะถูกส่งต่อถึง production
+- ถ้า test กับ production ใช้ environment variables ชุดเดียวกัน อาจเกิดการปนกันของข้อมูล
+- ถ้า CI รันไม่ครบทั้ง build, test, Trivy, และ CodeQL ความเสี่ยงจะถูกส่งต่อถึง production
 - ถ้าไม่มี branch protection กระบวนการอนุมัติอาจถูกข้าม
+- CodeQL รันเฉพาะเมื่อไฟล์ใน path ที่กำหนดเปลี่ยน — PR ที่แก้แค่ config อาจไม่ trigger CodeQL แต่ ruleset อาจยัง require check อยู่
 
 ## สรุปนโยบาย
 
 นโยบาย deploy ของโปรเจกต์นี้คือ:
 
 - รวมงานของนักพัฒนาเข้า `test`
-- ให้ CI/CD ตรวจสอบและ deploy ไป Railway `test` อัตโนมัติ
+- ให้ CI/CD build และ push images ไป GHCR tag `:test` อัตโนมัติ
+- ให้ทีมทดสอบบน test server ก่อนขึ้น production
 - ให้หัวหน้าทดสอบและอนุมัติการขึ้น production
-- เมื่อ merge เข้า `main` ให้ deploy ไป Railway `production` อัตโนมัติ
+- เมื่อ merge เข้า `main` ให้ CI/CD deploy ไป production VM อัตโนมัติ พร้อม smoke test และ rollback
 
 แนวทางนี้ช่วยให้ `test` เป็น staging area สำหรับตรวจสอบคุณภาพก่อนปล่อยจริง และทำให้ `main` เป็นแหล่งอ้างอิงของ production อย่างชัดเจน

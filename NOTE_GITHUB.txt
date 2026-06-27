@@ -22,3 +22,12 @@ Require code scanning results = บังคับว่าต้องไม่
 Require code quality results = บังคับว่าต้องผ่าน SonarQube
 Automatically request Copilot code review = ให้ Copilot Review อัติโนมัติหลังขอ PR
 ]
+ทำไมบางครั้ง Ruleset บอกให้ Check CodeQL แต่มันไม่รัน
+[เกิดจากไฟล์ที่แก้ไข ไม่ใช่ไฟล์ที่ CodeQL Detect Changes]
+สามารถใช้ GitHub Releases + tags มา Apply อย่างไรกับ Project นี้ได้
+[]
+
+1. อัปเดต HANDBOOK_DEPLOYMENT.md ให้เป็นปัจจุบัน
+2. Reusable Trivy Workflow
+ปัจจุบัน: Trivy logic ซ้ำใน [ci-cd-test.yml](.github/workflows/ci-cd-test.yml) และ [ci-cd-main.yml](.github/workflows/ci-cd-main.yml)
+Apply: สร้าง reusable-trivy-scan.yml — DRY + เปลี่ยน severity/policy ที่เดียว
