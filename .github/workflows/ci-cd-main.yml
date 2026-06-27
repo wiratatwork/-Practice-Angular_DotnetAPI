@@ -13,10 +13,6 @@ concurrency:
   group: deploy-production
   cancel-in-progress: false
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_OWNER: ${{ github.repository_owner }}
-
 jobs:
   ci:
     uses: ./.github/workflows/reusable-ci.yml
@@ -34,36 +30,10 @@ jobs:
     secrets: inherit
 
   trivy-scan:
-    name: Trivy Image Scan
     needs: build-and-push
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: read
-
-    steps:
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Scan backend image
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/basic-app-backend:prod
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          exit-code: 1
-
-      - name: Scan frontend image
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/basic-app-frontend:prod
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          exit-code: 1
+    uses: ./.github/workflows/reusable-trivy-scan.yml
+    with:
+      image_tag: prod
 
   deploy-prod:
     name: Deploy to Production
