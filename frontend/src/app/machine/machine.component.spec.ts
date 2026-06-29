@@ -166,22 +166,22 @@ describe('MachineComponent', () => {
   });
 
   it('should debounce search input', () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers(); // ใช้ fake timers เพราะต้องการทดสอบ debounce
     const fixture = setup();
-    machineServiceMock.getAll.mockClear();
+    machineServiceMock.getAll.mockClear(); // ลบจำนวนครั้งที่เรียก getAll
 
-    const input = fixture.nativeElement.querySelector('.search-input') as HTMLInputElement;
-    input.value = 'Press';
-    input.dispatchEvent(new Event('input'));
+    const input = fixture.nativeElement.querySelector('.search-input') as HTMLInputElement; // ค้นหา input เพราะต้องการทดสอบ debounce
+    input.value = 'Press'; // ตั้งค่า value เป็น 'Press'
+    input.dispatchEvent(new Event('input')); // ส่ง event input เพราะต้องการทดสอบ debounce
     fixture.detectChanges();
 
-    expect(machineServiceMock.search).not.toHaveBeenCalled();
+    expect(machineServiceMock.search).not.toHaveBeenCalled(); // ยังไม่เรียกเพราะ Debounce 300ms
 
-    vi.advanceTimersByTime(300);
-    fixture.detectChanges();
+    vi.advanceTimersByTime(300); // ข้าม 300ms
+    fixture.detectChanges(); // ตรวจสอบว่าเรียก search
 
-    expect(machineServiceMock.search).toHaveBeenCalledWith('Press');
-    vi.useRealTimers();
+    expect(machineServiceMock.search).toHaveBeenCalledWith('Press'); // ตรวจสอบว่าเรียก search ด้วย 'Press'
+    vi.useRealTimers(); // ปรับเป็น Timer ปกติ
   });
 
   it('should reload machines when search is cleared', () => {
