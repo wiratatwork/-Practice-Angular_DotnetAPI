@@ -173,7 +173,7 @@ describe('MachineComponent', () => {
     const input = fixture.nativeElement.querySelector('.search-input') as HTMLInputElement; // ค้นหา input เพราะต้องการทดสอบ debounce
     input.value = 'Press'; // ตั้งค่า value เป็น 'Press'
     input.dispatchEvent(new Event('input')); // ส่ง event input เพราะต้องการทดสอบ debounce
-    fixture.detectChanges(); 
+    fixture.detectChanges();
 
     expect(machineServiceMock.search).not.toHaveBeenCalled(); // ยังไม่เรียกเพราะ Debounce 300ms
 

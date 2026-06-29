@@ -11,16 +11,18 @@ describe('AuthService', () => {
   let httpMock: HttpTestingController;
   let routerMock: { navigate: ReturnType<typeof vi.fn> };
 
-  const tokenResponse: TokenResponse = { // จำลอง TokenResponse ด้วย accessToken, expiresIn และ user
+  const tokenResponse: TokenResponse = {
+    // จำลอง TokenResponse ด้วย accessToken, expiresIn และ user
     accessToken: 'access-token',
     expiresIn: 900,
     user: { username: 'admin', role: 'Admin' },
   };
 
-  beforeEach(() => { 
+  beforeEach(() => {
     routerMock = { navigate: vi.fn() };
 
-    TestBed.configureTestingModule({ // สร้าง Testing Module สำหรับการทดสอบ
+    TestBed.configureTestingModule({
+      // สร้าง Testing Module สำหรับการทดสอบ
       providers: [
         AuthService,
         provideHttpClient(),
@@ -37,8 +39,10 @@ describe('AuthService', () => {
     httpMock.verify(); // ตรวจสอบว่าไม่มี request ที่ยังไม่ได้ตอบกลับ
   });
 
-  it('should login and apply session', async () => { //ทดสอบการ login และการ apply session
-    const loginPromise = firstValueFrom( // รอการ login และการ apply session
+  it('should login and apply session', async () => {
+    //ทดสอบการ login และการ apply session
+    const loginPromise = firstValueFrom(
+      // รอการ login และการ apply session
       service.login({ username: 'admin', password: 'Admin@1234' }),
     );
 
@@ -56,8 +60,10 @@ describe('AuthService', () => {
     expect(service.isAdmin()).toBe(true); // ตรวจสอบว่า isAdmin คือ true
   });
 
-  it('should short-circuit initializeSession when already logged in', async () => { //ทดสอบการ short-circuit initializeSession เมื่อผู้ใช้งานล็อกอินแล้ว
-    const loginPromise = firstValueFrom( // รอการ login และการ apply session
+  it('should short-circuit initializeSession when already logged in', async () => {
+    //ทดสอบการ short-circuit initializeSession เมื่อผู้ใช้งานล็อกอินแล้ว
+    const loginPromise = firstValueFrom(
+      // รอการ login และการ apply session
       service.login({ username: 'admin', password: 'Admin@1234' }),
     );
     httpMock.expectOne('/api/auth/login').flush(tokenResponse); // จำลองการตอบกลับจาก server ด้วย tokenResponse
@@ -69,7 +75,8 @@ describe('AuthService', () => {
     httpMock.expectNone('/api/auth/refresh'); // ตรวจสอบว่าไม่ต้องกระทำการ refresh
   });
 
-  it('should refresh session successfully', async () => { // ทดสอบการ refresh session สำเร็จ
+  it('should refresh session successfully', async () => {
+    // ทดสอบการ refresh session สำเร็จ
     const refreshPromise = firstValueFrom(service.refreshSession()); // รอการ refresh session
 
     const req = httpMock.expectOne('/api/auth/refresh'); // ตรวจสอบว่าเรียก API /api/auth/refresh
@@ -83,7 +90,8 @@ describe('AuthService', () => {
     expect(service.currentUser()?.username).toBe('admin'); // ตรวจสอบว่า currentUser คือ { username: 'admin', role: 'Admin' }
   });
 
-  it('should clear session when refresh fails without navigating', async () => { // ทดสอบการ clear session เมื่อ refresh ล้มเหลวและไม่ได้ navigate
+  it('should clear session when refresh fails without navigating', async () => {
+    // ทดสอบการ clear session เมื่อ refresh ล้มเหลวและไม่ได้ navigate
     const refreshPromise = firstValueFrom(service.refreshSession()); // รอการ refresh session
 
     const req = httpMock.expectOne('/api/auth/refresh'); // ตรวจสอบว่าเรียก API /api/auth/refresh
