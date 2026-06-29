@@ -1,32 +1,23 @@
 Healthy Endpoint ทำงานยังไง
 [import { TestBed } from '@angular/core/testing'; TestBed เอาไว้ทำอะไร
 เพิ่ม AddHealthChecks() และ map กับ /health ทำหน้าที่เช็ค Service API เท่านั้น]
-[
-จำลอง Angular Runtime สำหรับการทดสอบ
+[จำลอง Angular Runtime สำหรับการทดสอบ
 1. สร้าง Testing Module สร้าง Environment สำหรับ Test ด้วยคำสั่ง configureTestingModule
 2. สร้าง Component ด้วยคำสั่ง createComponent
 3. รัน Lifecycle และ Render Template ด้วยคำสั่ง detectChanges
 4. Inject Service ด้วยคำสั่ง inject
-5. Mock Service
-]
+5. Mock Service]
 จากบรรทัด { provide: AuthService, useValue: authServiceMock } หมายความว่าอะไร
-[
-ทดสอบโดยไม่ต้องพึ่งพา API
-เมื่อ Angular ต้อง inject AuthService ในการทดสอบ ให้ใช้ object authServiceMock แทน AuthService ตัวจริง (Mocking Provider)
-]
+[ทดสอบโดยไม่ต้องพึ่งพา API เมื่อ Angular ต้อง inject AuthService ในการทดสอบ ให้ใช้ object authServiceMock แทน AuthService ตัวจริง (Mocking Provider)]
 มีตัวแปร router ไปทำไม ในเมื่อ providers: [ provideRouter([]),
-[
-provideRouter([]) ➜ ลงทะเบียน (register) Router ให้ Angular รู้จัก
-TestBed.inject(Router) ➜ ดึง (get) Router instance ออกมาใช้ใน test
-]
+[provideRouter([]) ➜ ลงทะเบียน (register) Router ให้ Angular รู้จัก
+TestBed.inject(Router) ➜ ดึง (get) Router instance ออกมาใช้ใน test]
 let authServiceMock: {
     isLoggedIn: ReturnType<typeof vi.fn>;
     initializeSession: ReturnType<typeof vi.fn>;
     login: ReturnType<typeof vi.fn>;
   }; คืออะไร
-[
-mock object service ที่มี mock function 3 ตัว แต่ยังไม่ได้สร้างค่าจริง
-]
+[mock object service ที่มี mock function 3 ตัว แต่ยังไม่ได้สร้างค่าจริง]
 beforeEach(async () => {
     authServiceMock = {
       isLoggedIn: vi.fn(() => false),
@@ -39,44 +30,31 @@ beforeEach(async () => {
         }),
       ),
     };
-[
-นี่คือส่วนสร้างค่าจริง
-]
+[นี่คือส่วนสร้างค่าจริง]
 vi.spyOn(router, 'navigate').mockResolvedValue(true); ทำหน้าที่อะไร
-[
-ดักจับการ Navigate จาก Router ว่าให้เรียกได้ แต่อย่าเปลี่ยนหน้าจริง
-]
+[ดักจับการ Navigate จาก Router ว่าให้เรียกได้ แต่อย่าเปลี่ยนหน้าจริง]
 expect(fixture.componentInstance).toBeTruthy(); ทำหน้าที่อะไร
-[
-ตรวจสอบว่า Component ถูกสร้างได้
-]
+[ตรวจสอบว่า Component ถูกสร้างได้]
 authServiceMock.isLoggedIn.mockReturnValue(true); ทำหน้าที่อะไร
-[
-จำลองว่า User Loggin แล้ว
-]
+[จำลองว่า User Loggin แล้ว]
 const result = await runGuard(); ทำหน้าที่อะไร
-[
-เรียก AuthGuard ที่คืนผลลัพธ์ว่า true (เข้า URL นั้นได้) หรือ คืน Redirect /login 
-]
+[เรียก AuthGuard ที่คืนผลลัพธ์ว่า true (เข้า URL นั้นได้) หรือ คืน Redirect /login]
 afterEach(() => {
   httpMock.verify();
 });
-[
-เช็คว่าไม่มี HTTP Request ที่ยังไม่ได้ตอบกลับ
-ทุก Request ต้อง Flush และ ExpectOne
-]
+[เช็คว่าไม่มี HTTP Request ที่ยังไม่ได้ตอบกลับ
+ทุก Request ต้อง Flush และ ExpectOne]
 function firstValueFrom ทำงานอย่างไร
-[
-รอ และแปลงผลลัพธ์ที่ Observable เป็นค่าจริง
-]
+[รอ และแปลงผลลัพธ์ที่ Observable เป็นค่าจริง]
 req.flush(tokenResponse); ทำหน้าที่อะไร แล้วทำไม await loginPromise; ถึงมาอยู่ด้านหลัง
-[
-req.flush(tokenResponse) จำลองข้อมูลที่กลับมาเป็น Response
-ที่อยู่หลังเพราะต้องรอให้ flush ส่งค่าจำลองกลับมา
-]
+[req.flush(tokenResponse) จำลองข้อมูลที่กลับมาเป็น Response
+ที่อยู่หลังเพราะต้องรอให้ flush ส่งค่าจำลองกลับมา]
 ถ้า await loginPromise; ยัง Resolve ไม่ได้ (ยังไม่ได้ผลลัพธ์) ก็จะไม่รันคำสั่งในบรรทัดต่อๆไปใช่หรือไม่
 [ใช่]
-
+httpMock.expectNone('/api/auth/refresh'); คืออะไร
+[ห้ามมี HTTP Request ไป /refresh (เพราะ Logged In อยู่แล้ว)]
+มันรู้ได้อย่างไรว่า fixture.componentInstance.openAddModal(); คือการกดปุ่มอะไรในหน้าจอ
+[]
 
 
 
