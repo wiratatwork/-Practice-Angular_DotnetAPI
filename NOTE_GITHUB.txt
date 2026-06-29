@@ -1,7 +1,7 @@
 อธิบาย Scenario ของแต่ละ GitHub Ruleset
 [
 Restrict creations = กำหนดให้คนที่มีสิทธิ์ (Bypass List) Fork แล้ว Push branch main ขึ้นมาใหม่
-Restrict updates = กำหนดให้คนที่มีสิทธิ์ ถึงจะ push ตรงได้ นอกนั้นต้อง PR ขอ merge main
+Restrict updates = กำหนดให้คนที่มีสิทธิ์ Push หรือ Merge PR ได้
 Restrict deletions = กำหนดให้คนที่มีสิทธิ์ที่จะลบ main ได้
 Require linear history = บังคับให้ใช้ Squash หรือ Rebase เพื่อ merge main เท่านั้น (2 วิธีนี้ได้ Linear History)
 Require deployments to succeed = บังคับให้ Deploy ผ่าน Environment อื่นผ่านก่อน จึงจะ merge main ได้ (ปัจจุบัน มีแค่ Production Environment)
