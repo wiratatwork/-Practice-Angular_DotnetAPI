@@ -1,9 +1,25 @@
-วิธีรันแบบปกติ 
-docker compose up --build
-วิธีรันแบบ E2E (New Database)
-docker compose -p basic-app-e2e -f docker-compose.yml -f docker-compose.e2e.yml up -d --wait ทำงานอย่างไร
-bash scripts/smoke-test.sh
-# จาก frontend/
-npm ci          # postinstall ติดตั้ง Chromium ให้อัตโนมัติ
-npm run e2e:headed
-npx playwright show-report 
+วิธีรันแบบปกติ ทำอย่างไร
+[docker compose up --build]
+วิธีรันแบบ E2E (New Database) ทำอย่างไร
+[docker compose -p basic-app-e2e -f docker-compose.yml -f docker-compose.e2e.yml up -d]
+docker compose -p basic-app-e2e -f docker-compose.yml -f docker-compose.e2e.yml up -d ทำงานอย่างไร
+[รันแบบ Override สำหรับการทดสอบ E2E และตั้งชื่อ Container ว่า basic-app-e2e]
+bash scripts/smoke-test.sh ทดสอบ Smoke Test กับ Container E2E
+# จาก frontend/ npm ci
+npm run e2e:headed รัน E2E แบบแสดง Browser
+npx playwright show-report แสดง Report หลังการทดสอบ
+คำสั่งกลุ่ม E2E ใน package.json มีหน้าที่อะไรกันบ้าง
+[
+e2e รันตาม e2e/playwright.config.ts (headless)
+e2e:headed รันแบบแสดง Browser
+e2e:ui รัน UI ของ Playwright
+e2e:stack:up รัน Container สำหรับ E2E (PostgreSQL ลูกใหม่, API, Frontend)
+e2e:stack:down ลบ Container พร้อมล้างข้อมูล
+pree2e และ pree2e:headed ติดตั้ง Chromium
+]
+
+
+
+
+เพิ่ม Test Case ให้สมบูรณ์
+ทำให้ Test Case สามารถ Reuse ได้ (Optional)
