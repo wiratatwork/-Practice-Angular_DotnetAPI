@@ -1,0 +1,23 @@
+# Ephemeral stack for Playwright E2E.
+# Usage:
+#   docker compose -p basic-app-e2e -f docker-compose.yml -f docker-compose.e2e.yml up -d --build --wait postgres api frontend
+#   docker compose -p basic-app-e2e -f docker-compose.yml -f docker-compose.e2e.yml down -v
+#
+# Manual dev keeps using:
+#   docker compose up --build
+
+services:
+  postgres:
+    container_name: demo-db-e2e
+    # No named volume: data lives only in the container and is discarded on down.
+    volumes: !reset []
+
+  api:
+    container_name: demo-api-e2e
+
+  frontend:
+    container_name: demo-frontend-e2e
+
+  pgadmin:
+    profiles:
+      - tools

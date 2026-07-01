@@ -2,6 +2,8 @@ FROM node:22-alpine AS build
 WORKDIR /app
 
 COPY package*.json ./
+COPY scripts/playwright-install.mjs scripts/
+ENV PLAYWRIGHT_SKIP_INSTALL=1
 RUN npm ci
 
 COPY . .
