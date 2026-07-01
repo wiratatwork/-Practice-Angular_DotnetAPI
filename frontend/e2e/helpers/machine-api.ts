@@ -23,7 +23,10 @@ export async function deleteMachine(
   });
 }
 
-export async function deleteE2eMachines(request: APIRequestContext, baseURL: string): Promise<void> {
+export async function deleteE2eMachines(
+  request: APIRequestContext,
+  baseURL: string,
+): Promise<void> {
   const token = await getAdminToken(request, baseURL);
   const headers = { Authorization: `Bearer ${token}` };
 
@@ -37,8 +40,6 @@ export async function deleteE2eMachines(request: APIRequestContext, baseURL: str
   await Promise.all(
     machines
       .filter((machine) => machine.machineNo.startsWith('E2E-'))
-      .map((machine) =>
-        request.delete(`${baseURL}/api/machine/${machine.machineNo}`, { headers }),
-      ),
+      .map((machine) => request.delete(`${baseURL}/api/machine/${machine.machineNo}`, { headers })),
   );
 }
