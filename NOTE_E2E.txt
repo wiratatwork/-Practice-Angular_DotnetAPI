@@ -1,0 +1,9 @@
+วิธีรันแบบปกติ 
+docker compose up --build
+วิธีรันแบบ E2E (New Database)
+docker compose -p basic-app-e2e -f docker-compose.yml -f docker-compose.e2e.yml up -d --wait ทำงานอย่างไร
+bash scripts/smoke-test.sh
+# จาก frontend/
+npm ci          # postinstall ติดตั้ง Chromium ให้อัตโนมัติ
+npm run e2e:headed
+npx playwright show-report 
