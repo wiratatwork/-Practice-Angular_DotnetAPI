@@ -11,7 +11,7 @@ cd "$ROOT_DIR"
 case "$ACTION" in
   up)
     docker compose -p "$PROJECT_NAME" "${COMPOSE_FILES[@]}" up -d --build --wait postgres api frontend
-    "$ROOT_DIR/scripts/smoke-test.sh"
+    bash "$ROOT_DIR/scripts/smoke-test.sh"
     ;;
   down)
     docker compose -p "$PROJECT_NAME" "${COMPOSE_FILES[@]}" down -v --remove-orphans

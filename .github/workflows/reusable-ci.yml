@@ -101,7 +101,7 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Start E2E stack
-        run: ./scripts/e2e-stack.sh up
+        run: bash ./scripts/e2e-stack.sh up
         env:
           POSTGRES_PASSWORD: Password123!
           DB_CONNECTION: Host=postgres;Port=5432;Database=demo;Username=sa;Password=Password123!
@@ -134,4 +134,4 @@ jobs:
 
       - name: Tear down E2E stack
         if: always()
-        run: ./scripts/e2e-stack.sh down
+        run: bash ./scripts/e2e-stack.sh down
