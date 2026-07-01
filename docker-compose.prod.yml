@@ -1,0 +1,91 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: demo-db
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: sa
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: demo
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    networks:
+      - demo-network
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sa -d demo"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: ${BACKEND_IMAGE:-ghcr.io/wiratatwork/basic-app-backend:prod}
+    container_name: demo-api
+    restart: unless-stopped
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5001
+
+      ConnectionStrings__DefaultConnection: ${DB_CONNECTION}
+
+      Jwt__Key: ${JWT_KEY}
+      Jwt__Issuer: BasicApp
+      Jwt__Audience: BasicApp
+      Jwt__AccessTokenExpiryMinutes: 15
+      Jwt__RefreshTokenSlidingDays: 7
+
+      Jwt__RefreshCookieName: refresh_token
+      Jwt__RefreshCookiePath: /api/auth
+      Jwt__RefreshCookieSecure: "true"
+
+    ports:
+      - "127.0.0.1:5001:5001"
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5001/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+    networks:
+      - demo-network
+
+  frontend:
+    image: ${FRONTEND_IMAGE:-ghcr.io/wiratatwork/basic-app-frontend:prod}
+    container_name: demo-frontend
+    restart: unless-stopped
+
+    depends_on:
+      api:
+        condition: service_healthy
+
+    ports:
+      - "127.0.0.1:4200:80"
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+    networks:
+      - demo-network
+
+volumes:
+  postgres_data:
+
+networks:
+  demo-network:
+    driver: bridge

@@ -1,0 +1,29 @@
+name: CI/CD - Build & Push to GHCR (test branch)
+
+on:
+  push:
+    branches:
+      - test
+
+jobs:
+  ci:
+    uses: ./.github/workflows/reusable-ci.yml
+
+  build-and-push:
+    name: Build & Push Docker Images (test)
+    needs: ci
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/reusable-build-push.yml
+    with:
+      push_images: true
+      deployment_target: test
+    secrets: inherit
+
+  trivy-scan:
+    needs: build-and-push
+    uses: ./.github/workflows/reusable-trivy-scan.yml
+    with:
+      image_tag: test
+      job_name: Trivy Image Scan (test)

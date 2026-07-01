@@ -1,0 +1,294 @@
+# Demo App — Machine Management
+
+Full-stack application ประกอบด้วย Angular 22 (Frontend), ASP.NET Core 10 (Backend API), PostgreSQL 16 และ pgAdmin 4 รันผ่าน Docker Compose
+
+---
+
+## Tech Stack
+
+| Layer      | Technology                  |
+|------------|-----------------------------|
+| Frontend   | Angular 22, Nginx           |
+| Backend    | ASP.NET Core 10, EF Core    |
+| Database   | PostgreSQL 16               |
+| DB Admin   | pgAdmin 4                   |
+| Container  | Docker Compose              |
+
+---
+
+## Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (รวม Docker Compose)
+
+ตรวจสอบว่า Docker พร้อมใช้งาน:
+
+```bash
+docker --version
+docker compose version
+```
+
+---
+
+## Environment Setup
+
+### 1. สร้างไฟล์ `.env` จาก template
+
+```bash
+cp .env.example .env
+```
+
+### 2. แก้ไขค่าใน `.env` ตามต้องการ
+
+```env
+# Database Configuration
+POSTGRES_PASSWORD=your_secure_password
+DB_CONNECTION=Host=postgres;Port=5432;Database=demo;Username=sa;Password=your_secure_password
+
+# JWT Configuration
+JWT_KEY=your_jwt_secret_key_minimum_256_bits
+
+# PgAdmin Configuration
+PGADMIN_EMAIL=admin@example.com
+PGADMIN_PASSWORD=admin
+```
+
+> **⚠️ สำคัญ:** ไฟล์ `.env` ถูก ignore โดย git แล้ว (อยู่ใน `.gitignore`) — **ห้าม commit ขึ้น repository**
+
+---
+
+## การรัน Project
+
+### 1. Clone หรือเปิด folder ของ project
+
+```bash
+cd "c:\Data\Drive D\app\test"
+```
+
+### 2. Build และ Start ทุก container
+
+```bash
+docker compose up --build
+```
+
+> ครั้งแรกจะใช้เวลาสักครู่เพื่อ build image  
+> ครั้งถัดไปใช้ `docker compose up` (ไม่ต้อง `--build`)
+
+### 3. รันแบบ Background (detached mode)
+
+```bash
+docker compose up --build -d
+```
+
+### 4. หยุด container
+
+```bash
+docker compose down
+```
+
+หยุดพร้อมลบ volume (ล้างข้อมูล database ด้วย):
+
+```bash
+docker compose down -v
+```
+
+---
+
+## วิธีรัน Container ตามไฟล์ Compose
+
+### 1) รันด้วย `docker-compose.yml` (base/default)
+
+เหมาะกับการรันแบบมาตรฐานในเครื่องที่มี source code และต้องการ build image จากโปรเจกต์นี้โดยตรง
+
+```bash
+docker compose -f docker-compose.yml up --build -d
+```
+
+หยุดการรัน:
+
+```bash
+docker compose -f docker-compose.yml down
+```
+
+---
+
+### 2) รันแบบ Development ด้วย `docker-compose.dev.yml` (override จาก base)
+
+ไฟล์ `docker-compose.dev.yml` จะ override บางค่าใน base เช่น:
+- ใช้ `Dockerfile.dev`
+- mount source code เข้า container
+- เปลี่ยนพอร์ต frontend เป็น `4201:4200` สำหรับ dev server
+
+คำสั่งรัน:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -d
+```
+
+ดู log สำหรับโหมด dev:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
+```
+
+หยุดการรัน:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down
+```
+
+---
+
+### 3) รันบน VM แบบ Production ด้วย `docker-compose.prod.yml`
+
+เหมาะกับ VM ที่ deploy จริง โดยใช้ image จาก GHCR (ไม่ build ในเครื่อง VM)
+
+เตรียมก่อนรัน:
+1. สร้างไฟล์ `.env` บน VM ให้มีค่า `POSTGRES_PASSWORD`, `DB_CONNECTION`, `JWT_KEY`
+2. login GHCR
+
+```bash
+docker login ghcr.io -u <ghcr-username> -p <ghcr-token>
+```
+
+รัน/อัปเดตเวอร์ชันล่าสุด:
+
+```bash
+docker compose -f docker-compose.prod.yml pull
+docker compose -f docker-compose.prod.yml up -d
+```
+
+หยุดการรัน:
+
+```bash
+docker compose -f docker-compose.prod.yml down
+```
+
+หมายเหตุ production:
+- `frontend` และ `api` bind พอร์ตเป็น `127.0.0.1` เพื่อไม่เปิดให้เข้าตรงจากภายนอก
+- ควรให้ Nginx (reverse proxy) เป็นตัวรับ public traffic ผ่าน `80/443`
+- หลัง deploy สามารถเก็บ image เก่าที่ไม่ใช้งานได้ด้วย:
+
+```bash
+docker image prune -f
+```
+
+---
+
+## URL ทั้งหมด
+
+| Service        | URL                                      | หมายเหตุ                    |
+|----------------|------------------------------------------|-----------------------------|
+| **Frontend**   | http://localhost:4200                    | Angular App (ผ่าน Nginx)    |
+| **Backend API**| http://localhost:5001                    | ASP.NET Core API            |
+| **Swagger UI** | http://localhost:5001/swagger            | API Documentation           |
+| **Health Check**| http://localhost:5001/health            | API Health Status           |
+| **pgAdmin**    | http://localhost:5050                    | PostgreSQL Web Admin        |
+| **PostgreSQL** | localhost:5432                           | Direct DB connection        |
+
+---
+
+## Swagger UI
+
+เปิด browser แล้วไปที่:
+
+```
+http://localhost:5001/swagger
+```
+
+> Swagger จะแสดงก็ต่อเมื่อ `ASPNETCORE_ENVIRONMENT=Development` ซึ่งตั้งไว้ใน `docker-compose.yml` แล้ว
+
+### API Endpoints ที่มี
+
+| Method   | Endpoint                                        | คำอธิบาย                        |
+|----------|-------------------------------------------------|----------------------------------|
+| `GET`    | `/api/machine`                                  | ดึงข้อมูลเครื่องจักรทั้งหมด      |
+| `GET`    | `/api/machine/{machineNo}`                      | ดึงข้อมูลตาม Machine No          |
+| `GET`    | `/api/machine/search/{searchTerm}`              | ค้นหาตาม Machine No / Name       |
+| `GET`    | `/api/machine/checkDuplicateName/{machineName}` | ตรวจสอบชื่อซ้ำ                   |
+| `POST`   | `/api/machine`                                  | สร้างเครื่องจักรใหม่              |
+| `PATCH`  | `/api/machine/{machineNo}`                      | อัปเดตข้อมูลเครื่องจักร           |
+| `DELETE` | `/api/machine/{machineNo}`                      | ลบเครื่องจักร                    |
+
+---
+
+## pgAdmin
+
+เปิด browser แล้วไปที่:
+
+```
+http://localhost:5050
+```
+
+### Login credentials
+
+| Field    | Value               |
+|----------|---------------------|
+| Email    | admin@example.com   |
+| Password | admin               |
+
+### เพิ่ม Database Server ใน pgAdmin
+
+1. คลิกขวาที่ **Servers** → **Register** → **Server...**
+2. ตั้งชื่อ (เช่น `demo-db`) ในแท็บ **General**
+3. ไปแท็บ **Connection** กรอกข้อมูล:
+
+| Field             | Value                               |
+|-------------------|-------------------------------------|
+| Host name/address | `postgres`                          |
+| Port              | `5432`                              |
+| Maintenance DB    | `demo`                              |
+| Username          | `sa`                                |
+| Password          | ใช้ค่าจาก `POSTGRES_PASSWORD` ใน `.env` |
+
+4. คลิก **Save**
+
+---
+
+## Database Connection (Direct)
+
+สำหรับเชื่อมต่อผ่าน client อื่น เช่น DBeaver, TablePlus:
+
+| Field    | Value                                    |
+|----------|------------------------------------------|
+| Host     | `localhost`                              |
+| Port     | `5432`                                   |
+| Database | `demo`                                   |
+| Username | `sa`                                     |
+| Password | ใช้ค่าจาก `POSTGRES_PASSWORD` ใน `.env` |
+
+---
+
+## Container Names
+
+| Container        | Service    |
+|------------------|------------|
+| `demo-frontend`  | Frontend   |
+| `demo-api`       | Backend API|
+| `demo-db`        | PostgreSQL |
+| `demo-pgadmin`   | pgAdmin    |
+
+### ดู logs แต่ละ container
+
+```bash
+docker logs demo-api
+docker logs demo-frontend
+docker logs demo-db
+```
+
+### เข้า shell ใน container
+
+```bash
+docker exec -it demo-api bash
+docker exec -it demo-db psql -U sa -d demo
+```
+
+---
+
+## Startup Order
+
+Container จะเริ่มตามลำดับ health check ดังนี้:
+
+```
+postgres (healthy) → api (healthy) → frontend
+                  ↘ pgadmin
+```

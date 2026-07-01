@@ -1,0 +1,76 @@
+name: CI/CD - Build & Push to GHCR (main branch)
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    uses: ./.github/workflows/reusable-ci.yml
+
+  build-and-push:
+    name: Build & Push Docker Images (prod)
+    needs: ci
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/reusable-build-push.yml
+    with:
+      push_images: true
+      deployment_target: prod
+    secrets: inherit
+
+  trivy-scan:
+    needs: build-and-push
+    uses: ./.github/workflows/reusable-trivy-scan.yml
+    with:
+      image_tag: prod
+
+  deploy-prod:
+    name: Deploy to Production
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: [build-and-push, trivy-scan]
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ vars.PROD_URL }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Copy deploy scripts to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          source: scripts/deploy-prod.sh,scripts/rollback-prod.sh,scripts/smoke-test.sh
+          target: ~/basic_app/
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script_stop: true
+          script: |
+            cd ~/basic_app
+            mkdir -p scripts
+            chmod +x scripts/*.sh
+
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io \
+              -u "${{ secrets.GHCR_USERNAME }}" \
+              --password-stdin
+
+            DEPLOY_SHA="${{ needs.build-and-push.outputs.short_sha }}" ./scripts/deploy-prod.sh

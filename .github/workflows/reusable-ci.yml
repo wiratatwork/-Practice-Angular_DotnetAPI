@@ -1,0 +1,137 @@
+name: Reusable CI
+
+on:
+  workflow_call:
+
+jobs:
+  lint-frontend:
+    name: Lint Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+
+  test-frontend:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+      - run: npm test -- --watch=false
+
+  lint-backend:
+    name: Lint Backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - run: dotnet format --verify-no-changes
+        working-directory: backend
+
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - run: dotnet test --filter "FullyQualifiedName!~Integration" --verbosity normal
+
+  integration-backend:
+    name: Integration Backend
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: sa
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: demo
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U sa -d demo"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      TEST_DB_CONNECTION: Host=localhost;Port=5432;Database=demo;Username=sa;Password=test
+      ConnectionStrings__DefaultConnection: Host=localhost;Port=5432;Database=demo;Username=sa;Password=test
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - run: dotnet test --filter "FullyQualifiedName~Integration" --verbosity normal
+
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Start E2E stack
+        run: ./scripts/e2e-stack.sh up
+        env:
+          POSTGRES_PASSWORD: Password123!
+          DB_CONNECTION: Host=postgres;Port=5432;Database=demo;Username=sa;Password=Password123!
+          JWT_KEY: e2e-ci-jwt-secret-key-minimum-256-bits-long!!
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run E2E tests
+        working-directory: frontend
+        run: npm run e2e
+        env:
+          BASE_URL: http://127.0.0.1:4200
+          CI: true
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+
+      - name: Tear down E2E stack
+        if: always()
+        run: ./scripts/e2e-stack.sh down

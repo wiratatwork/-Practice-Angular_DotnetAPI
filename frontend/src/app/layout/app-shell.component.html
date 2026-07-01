@@ -1,0 +1,58 @@
+<div class="app-shell" [class.sidebar-collapsed]="sidebarCollapsed()">
+  <aside id="app-sidebar" class="sidebar" aria-label="เมนูหลัก">
+    <div class="sidebar-header">
+      <span class="sidebar-brand" [class.hidden-label]="sidebarCollapsed()">Basic App</span>
+    </div>
+
+    <nav class="sidebar-nav">
+      @for (item of navItems; track item.route) {
+        <a
+          class="nav-item"
+          [routerLink]="item.route"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: item.route === '/' }"
+          [attr.aria-label]="item.label"
+          [title]="sidebarCollapsed() ? item.label : null"
+        >
+          <ng-icon class="nav-icon icon-nav" [name]="item.icon" aria-hidden="true" />
+          <span class="nav-label" [class.hidden-label]="sidebarCollapsed()">{{ item.label }}</span>
+        </a>
+      }
+    </nav>
+  </aside>
+
+  <div class="shell-main">
+    <header class="topbar">
+      <button
+        type="button"
+        class="sidebar-toggle"
+        (click)="toggleSidebar()"
+        [attr.aria-expanded]="!sidebarCollapsed()"
+        aria-controls="app-sidebar"
+        aria-label="สลับเมนูด้านข้าง"
+      >
+        <ng-icon class="toggle-icon icon-nav" [name]="icons.menu" aria-hidden="true" />
+      </button>
+
+      <div class="topbar-spacer"></div>
+
+      <div class="topbar-user">
+        <span class="user-label">{{ currentUser()?.username ?? '...' }}</span>
+        @if (currentUser()?.role) {
+          <span class="role-badge" [class.role-admin]="isAdmin()">
+            {{ currentUser()?.role }}
+          </span>
+        }
+      </div>
+
+      <button type="button" class="btn btn-secondary btn-sm" (click)="logout()">
+        <ng-icon class="icon-inline" [name]="icons.logout" aria-hidden="true" />
+        ออกจากระบบ
+      </button>
+    </header>
+
+    <main class="content-area">
+      <router-outlet />
+    </main>
+  </div>
+</div>

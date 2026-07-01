@@ -1,0 +1,182 @@
+Lint Frontend กับ Lint Backend คืออะไร
+[Frontend ใช้เครื่งมือชื่อ Prettier เช็ค format/style การเขียนโค้ดใน Folder Frontend
+Backend ใช้ dotnet format --verify-no-changes เพื่อเช็ค Style การเขียนตาม .NET formatter]
+เมื่อรัน npm run lint มันจะทำอะไรบ้าง
+[ตรวจไฟล์ ยกเว้นที่เขียนไว้ใน .prettierignore ตามกฏที่เขียนไว้ใน .prettierrc]
+frontend\.prettierrc นิยามสไตล์การเขียนไว้อย่างไรบ้าง
+[ความกว้างบรรทัด 100 อักษร, ใช้ Singlequote, ใช้ Parser Anuglar กับไฟล์ .html]
+ระหว่าง npx prettier --check . กับ npx prettier --write . ต่างกันอย่างไร
+[--check ตรวจสอบไฟล์เท่านั้น / --write แก้ไขให้ถูกต้องด้วย / ควรรัน npx prettier --write . ก่อน commit ขึ้น test เสมอ]
+แล้ว Lint ของ backend ทำงานอย่างไร
+[ตรวจไฟล์ CS เป็นไปตาม .NET formatter โดยไม่แก้ไฟล์ให้]
+http code 200 คืออะไร
+[OK]
+Smoke Test คืออะไร ทำอะไรบ้าง
+[เช็ค Healtcheck ของ API / Frontend หลัง Deploy บน Production]
+ทำไมใช้ 127.0.0.1 แทนที่จะเป็น localhost ใน Script Smoke Test แล้วได้ผลลัพธ์ต่างกันไหม
+[เพราะกำหนดไว้ที่ docker-compose.prod.yml ซึ่ง localhost บาง OS อาจได้ 0.0.0.0 แทน]
+ถ้า Smoke Test ไม่ผ่านจะต้องทำอะไรต่อ
+[ต้อง SSH เข้าไปแก้ SHA ของ Image ที่ docker-compose.prod.yml แล้ว Pull Image รันใหม่ / หรือปรับให้เป็น Auto Rollback]
+ทำไม Build ทั้ง frontend และ backend package แต่ได้ค่า SHA Short เดียวกัน
+[เพราะใช้ค่า SHA เดียวกันจาก Job Build and Push Docker Images]
+Trivy Scan คืออะไร มีประโยชน์อย่างไร
+[ตรวจสอบช่องโหว่ของ Image
+สแกนช่องโหว่ของ Package, การตั้งค่าที่ไม่รัดกุม, token/key]
+ถ้า push ไป test แล้ว แต่ trivy scan ไม่ผ่าน จะเกิดอะไรขึ้น
+[Code จะเข้า branch test ไปแล้ว เพราะเกิดการเช็คหลัง Push ควรเปลี่ยนเป็น Pull Request แทน]
+PR กับ Merge มันเกิดคนละ Step กันใช่ไหม อย่างไร
+[เกิด PR ก่อน คือ ขอรวม Code แล้วรัน CI เมื่อกด Merge จะเกิด Push รัน CI และ Deploy]
+Rolling Deploy/Update คืออะไร
+[เปลี่ยนทีละ Service/Container]
+docker compose -f "$COMPOSE_FILE" up -d --no-deps --wait api คำสั่ง --wait หมายถึงอะไร
+[รอ healthcheck ผ่าน]
+--no-deps หมายถึงอะไร
+[start เฉพาะ Container ที่ระบุ ไม่ต้อง Restart Container ที่ depend on]
+ทำไมถึงเลือก Up container api ก่อน backend
+[เพราะ depend_on api healthcheck]
+dependabot คืออะไร นิยมไว้ใช้งานเรื่องอะไร
+[บริการของ GitHub ที่เปิด PR เมื่อพบว่ามี Dependency/Package/Library Version ใหม่
+สามารถตั้ง Schedule เช็คได้
+เลือก Branch ได้]
+อธิบายไฟล์ .github\dependabot.yml โดยละเอียด
+[เช็ค Dependency ของ Angular, .NET และ GitHub Actions ทุกสัปดาห์ และเปิด PR มากสุด 5 PR ต่อ 1 Folder]
+CodeQL Analysis คืออะไร
+[บอทความปลอดภัยของ GitHub ที่ อ่าน Logic โค้ด C# และ TypeScript แล้วหาช่องโหว่ ก่อน merge/deploy]
+CodeQL ใน GitHub Actions ผ่าน Job ที่มันทำคืออะไร
+[Checkout Code -> Build C# -> ค้นหา Logic ที่เสี่ยงเป็นช่องโหว่]
+CodeQL วิเคราะห์อะไรบ้าง มีอะไรบ้างที่มักไม่ผ่าน
+[C#
+เช่น SQL Injection / XSS / Hardcoded Secret / Log Injection
+TypeScript
+เช่น เก็บ Secure ใน LocalStorage / เรียก API ผ่าน HTTP]
+อธิบาย .github\workflows\codeql.yml โดยละเอียด
+[ตั้งรันเมื่อ PR และ Push / รันตามเวลา Cron Job
+รัน 2 Job คือ C# และ TS
+ดึงโค้ด -> ตั้งค่า CodeQL -> วิเคราะห์ช่องโหว่]
+แก้ไข Alert ที่มีปัญหา
+[แก้แล้ว PR main มันจะ Closed ให้เอง พร้อมมี Commit ที่พบ และแก้ไข]
+Test Frontend อย่างไร
+[ใช้เครื่องมือ @angular/build:unit-test ทดสอบ
+รันไฟล์ *.spec.ts ทั้งหมด ตาม Test Case
+]
+อธิบายไฟล์ spec แต่ละไฟล์
+[app.spec.ts ทดสอบ app.ts เป็น Smoke Test ว่าสร้าง App Component ได้ และมี <router-outlet>
+app.routes.spec.ts ทดสอบ app.routes.ts ว่า
+1. 'login' เป็น public (ไม่มี canActivate)
+2. Shell route ถูก Protect และมี Child routes คือ '' และ 'machines'
+3. Unknow route ต้อง Redirect ไป '' (หน้าแรกของ Shell)
+app.shell.component.spec.ts ทดสอบ AppShellComponent
+จำลอง User -> ล้าง localStorage สถานะการเปิด-ปิด Nav bar -> ให้ Route ทำงานได้
+1. สร้าง AppShellComponent ได้
+2. แสดงชื่อ User บน Top Bar ได้
+3. เมื่อกด Toggle แล้วสลับค่า localStorage ได้
+4. มีลิงก์ 2 อันคือ / และ /machine
+5. กดปุ่ม Logout แล้วเรียกฟังก์ชัน Mock
+]
+Spy function (vi.fn()) คืออะไร ทำไมต้องทำเป็น Mock
+[ฟังก์ชัน Mock เพื่อเช็คว่าถูกเรียก ทำเพื่อแยกการทดสอบกับ Backend]
+npm install กับ npm ci ต่างกันอย่างไร
+[npm install ติดตั้ง dependency ใหม่ ซึ่งอาจเปลี่ยน Version เพราะอ่านจาก package.json สำหรับ Dev
+npm ci ติดตั้งตาม version ตาม package.lock.json ที่เคยติดตั้งไว้ตอน Dev สำหรับ Deploy]
+ทำให้สมบูรณ์ผ่านการอ่าน Codebase
+[เพิ่ม HomeComponent, AuthComponent, MachineComponent, AuthGuard, AuthServices (HttpTestingController)]
+Test Backend อย่างไร
+[Build Project Test
+แบ่งเป็น 2 ส่วน
+1. Unit Test ด้วยคำสั่ง dotnet test --filter "FullyQualifiedName!~Integration" --verbosity normal
+สำหรับทดสอบที่ทุกไฟล์ที่ลงท้ายด้วย Tests.cs ยกเว้น namespace "Integration"
+คำสั่ง --verbosity normal ช่วยแสดง Log Test
+2. Integration Test เริ่ม Container Postgres แล้วรัน Test Class Namespace "Integration" โดยมี Class CustomWebApplicationFactory Start Web App -> เชื่อมต่อ PostgresQL -> Migrate/Seed User(Program.cs)]
+ไฟล์ BasicApp.sln มีหน้าที่อะไร ทำงานอย่างไร
+[หน้าที่จัดหมวดหมู่ว่ามี Project อะไรบ้าง แล้ว .csproj ของ Backend.Tests จะเป็นตัวบอกว่าต้อง Test ของ Folder ไหน]
+มี [Collection("Integration")] เพื่ออะไร
+[ให้ CustomWebApplicationFactory รัน App ครั้งเดียวแล้วใช้ Test ร่วมกัน]
+backend.Tests\CustomWebApplicationFactory.cs มีหน้าที่อะไร ทำงานอย่างไร
+[Class ที่ทำหน้ารัน App จริง โดยใช้ Override Config สำหรับ Testing]
+backend.Tests\Integration\IntegrationTestCollection.cs มีหน้าที่อะไร ทำงานอย่างไร
+[xUnit สร้าง Instance ของ CustomWebApplicationFactory เพียงครั้งเดียวต่อ Collection
+integration tests ทั้งหมดในกลุ่ม "Integration" จะใช้ CustomWebApplicationFactory ตัวเดียวกัน]
+backend.Tests\Integration\AuthIntegrationTests.cs มีหน้าที่อะไร ทำงานอย่างไร
+[ทดสอบ API Login ด้วย User 'admin' ที่ Seed]
+backend.Tests\Integration\HealthEndpointTests.cs มีหน้าที่อะไร ทำงานอย่างไร
+[ทดสอบ API /health ว่าแอปรันได้]
+backend.Tests\JwtTokenServiceTests.cs มีหน้าที่อะไร ทำงานอย่างไร
+[เป็น Unit Test ทดสอบการ Generate JWT โดยไม่ต้องรัน App จริง]
+ลำดับการรัน HealthEndpointTests กับ AuthIntegrationTests เป็นอย่างไร
+[ไม่ได้กำหนด แต่รันทีละตัวหลัง Start Program.cs แล้ว]
+xUnit คืออะไร
+[Test Framework สำหรับ .NET
+ค้นหา Class/Method ที่มี [Fact] รัน Test แล้วรายงาน
+รองรับ Constructor Injection]
+ถ้ารันบน GitHub Actions โปรแกรมจะถูกรันและเก็บใน Memory ของ Virtual Computer (Runner) ที่รัน GitHub Action นั้นใช่หรือไม่
+[ใช่ ]
+รัน Test Backend ด้วยเงื่อนไขอะไรบ้าง ครบถ้วนหรือไม่
+[ยังขาด MachineController และ AuthController บางส่วน]
+ทำ Backend Test ให้สมบูรณ์ผ่านการอ่าน Codebase
+[OK]
+เราสามารถ Test CI ด้วยการพิมพ์คำสั่งบนเครื่อง Developer ก่อนที่จะ Commit ขึ้น GitHub ได้หรือไม่ อย่างไร
+[Frontend ที่ได้จาก npm test -- --watch=false
+Backend แยกเป็น 
+1. Unit Test จากคำสั่ง dotnet test --filter "FullyQualifiedName!~Integration" --verbosity normal
+2. Integration Test จากคำสั่ง dotnet test --filter "FullyQualifiedName~Integration" --verbosity normal และต้องรัน Container PostgreSQL
+แต่ถ้ารันบน CI GitHub จะรัน PostgreSQL ให้อัติโนมัติ
+หรือ Dev รันด้วย
+docker compose up -d postgres
+$env:TEST_DB_CONNECTION="Host=localhost;Port=5432;Database =demo;Username=sa;Password=Password123!"
+dotnet test --filter "FullyQualifiedName~Integration" --verbosity normal]
+TestClass มีหลาย Method รันใช้ Service PostgreSQL ชุดข้อมูลเดียวกันไหม
+[ใช่ แต่สามารถเพิ่มให้ reset ข้อมูลได้ เพราะแต่ละ Test รันต่อเนื่องกัน]
+SCP deploy script คืออะไร ทำงานอย่างไร
+[SCP = Secure Copy Protocol สำหรับคัดลอก Script ไป VM เพื่อ Deploy
+ส่งไฟล์ทั้งหมดใน Folder scripts เข้า VM -> รัน deploy-prod.sh พร้อม SHA ของ commit ที่ Build แล้ว]
+deploy-prod.sh ทำอะไรบ้าง ทำงานอย่างไร อธิบายโดยละเอียด
+[โหลด SHA ครั้งที่แล้ว
+Rolling Update ผ่าน docker-compose.prod.yml
+รัน Smoke Test
+ถ้ารัน ไม่ผ่าน รัน Rollback โดยใช้ Image SHA ครั้งที่แล้ว
+ถ้ารันผ่าน อัปเดต SHA ลง .last-good-deploy สำหรับสำรอง Rollback ครั้งต่อไป
+]
+ถ้า Smoke Test ไม่ผ่าน แล้ว Rollback ผ่าน DEPLOY_SHA ที่ถูกบันทึก .last-good-deploy จะเป็นค่าอะไร
+[ไฟล์จะเหมือนเดิม เพราะ Exit ก่อน]
+เลข SHA Short จากการ Build เข้าไปใน deploy-prod.sh อย่างไร
+[รับเป็น Parameter ที่ส่งมาจาก GitHub Action]
+ใช้ SHA ตอนไหน
+[บันทึกลง .last-good-deploy หลัง Smoke Test ผ่าน]
+ทำไม ต้องตั้งค่าตัวแปร PROD_URL จำเป็นหรือไม่
+[ไม่จำเป็น แค่ดึง Env Var มาแสดง]
+ทำไมต้องสร้าง Environment ใน GitHub Repo เพิ่ม ทั้ง ๆ ที่ไม่มีก็สามารถ Deploy SSH ผ่าน CICD ได้แล้ว
+[ไม่จำเป็น แต่ช่วยเพิ่มกฏการ Deploy เช่น ตั้ง Protection Rules Required Reviewers, ตั้ง Branch Deployment
+การใส่ environment ใน GitHub Action Job มองว่าเป็น Job Deployment ที่ใช้ Production Environment
+]
+ทำไมควรแยก Environment
+[ตั้ง Protection Rules ได้ / แยก Secret ได้]
+ทำไมถึง Deploy ได้ เพราะว่าตั้ง Variable PROD_URL ตั้งที่ Environment 'Production' ส่วน Secret ที่เหลือตั้งที่ Actions secrets and variables
+[เพราะอ่านได้ทั้ง Environment และ Repository]
+GitHub มีระบบ Secret / Variables เป็นอย่างไรบ้าง
+[2 ชนิด คือ Variable และ Secret
+และ 3 Scope คือ Environment -> Repository -> Organization ซึ่ง Override จาก Scope ที่ย่อยที่สุดก่อน]
+ย้าย Secret จาก Repositry ไป Environment Secret
+[OK]
+Require status checks to pass แล้วเลือกตามนี้ หมายถึงอะไร (ที่ Branch main ซึ่งเปิดให้ PR เท่านั้น ห้าม Push ตรง)
+[PR ต้องผ่าน CI Check ทั้งหมดก่อนจะ Merge เข้า main ได้]
+ถ้าตั้ง Ruleset บน branch main ว่า ให้ PR เท่านั้น และต้องผ่าน CI คำถามคือ CI นี้ รันตอน Push branch test หรือตอน PR branch main
+[รันจาก PR ที่มี target branch main]
+Require branches to be up to date before merging หมายความว่าอะไร
+[เมื่อมี merge main แทรก เราจะต้อง Update branch แล้ว Recheck]
+Allowed merge methods แล้วเลือก เฉพาะ Squash และ Rebase บน Branch main หมายถึงอะไร แล้ว Merge Commit, Squash, Rebase แตกต่างกันอย่างไร
+[ให้ merge เข้า main ด้วยวิธี Squash หรือ Rebase เท่านั้น
+merge = สร้าง commit ที่ merge ตัวย่อย ข้อดี เห็นครบ ข้อเสีย มี commit เล็กๆน้อยๆปะปน
+squash = รวมทุก commit เป็น commit ใหม่ ข้อดี ไม่รก commit เป็นเส้นตรง ข้อเสีย สูญเสีย history ย่อย
+rebase = คัดลอกทุก commit ไปเป็น commit อีกชุดบน main ข้อดี เป็นเส้นตรง ข้อเสีย มี commit เพิ่มขึ้นเท่าตัว]
+ถ้าใช้ merge commit แล้วลบ branch ที่นำเข้ามารวม มีส่งผลการต่อดู log หรือไม่
+[ยังสามารถดูได้ดังเดิม]
+ทำไมตอนทำ Pull Request ขอเข้า main ก็มีการเช็ค CI แล้ว แล้วเมื่อ Approve Merge main ยังต้องรัน GitHub Action อีก
+[เพราะ triggeer ทั้ง pull request และ push (merge)]
+dependabot ทำหน้าที่ Update Version Package ตอนที่ Merge Branch main หรือ แล้วเราต้อง Pull ลงมาที่ Branch test หรือไม่
+[ใช่ ใช้ merge brach จาก main บน test]
+ทำไม dependabot ทำงานบน Branch main เท่านั้น แต่ไม่ทำตอน push Branch test
+[สามารถกำหนด bnrach เป้าหมายได้]
+ทำไมเมื่อ Merge มา Branch main ถึงมีการเช็ครัน CI ทั้งแบบ Push และแบบ Pull Request
+[เพราะเขียน workflow กำหนดไว้แบบนั้น]
+เพราะว่ามีคำสั่ง environment ที่ deploy-prod จึงต้องมี Approval Deploy ใช่หรือไม่
+[ใช่]

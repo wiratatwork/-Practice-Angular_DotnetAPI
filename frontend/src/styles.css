@@ -1,0 +1,153 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply m-0 bg-slate-100 font-sans text-slate-800;
+  }
+}
+
+@layer components {
+  /* Buttons */
+  .btn {
+    @apply inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-lg border border-transparent px-5 py-2.5 text-sm font-medium leading-none transition-all duration-150;
+  }
+
+  .btn:disabled {
+    @apply cursor-not-allowed opacity-60;
+  }
+
+  .btn-primary {
+    @apply border-blue-500 bg-blue-500 text-white;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    @apply border-blue-600 bg-blue-600;
+  }
+
+  .btn-secondary {
+    @apply border-slate-200 bg-slate-100 text-slate-600;
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    @apply bg-slate-200;
+  }
+
+  .btn-outline {
+    @apply border-blue-200 bg-transparent text-blue-500;
+  }
+
+  .btn-outline:hover:not(:disabled) {
+    @apply bg-blue-50;
+  }
+
+  .btn-danger-outline {
+    @apply border-red-200 bg-transparent text-red-600;
+  }
+
+  .btn-danger-outline:hover:not(:disabled) {
+    @apply bg-red-50;
+  }
+
+  .btn-danger {
+    @apply border-red-600 bg-red-600 text-white;
+  }
+
+  .btn-danger:hover:not(:disabled) {
+    @apply border-red-700 bg-red-700;
+  }
+
+  .btn-sm {
+    @apply rounded-md px-3 py-1.5 text-xs;
+  }
+
+  .btn-block {
+    @apply mt-2 w-full py-3;
+  }
+
+  /* Alerts */
+  .alert {
+    @apply mb-4 flex items-center gap-2 rounded-lg px-4 py-3.5 text-sm font-medium;
+  }
+
+  .alert-success {
+    @apply border border-green-200 bg-green-50 text-green-700;
+  }
+
+  .alert-error {
+    @apply border border-red-200 bg-red-50 text-red-600;
+  }
+
+  .alert-sm {
+    @apply mb-4 px-3.5 py-2.5 text-sm;
+  }
+
+  .alert-icon {
+    @apply shrink-0;
+  }
+
+  /* Forms */
+  .form-group {
+    @apply mb-4;
+  }
+
+  .form-label {
+    @apply mb-1.5 block text-sm font-semibold text-gray-700;
+  }
+
+  .required {
+    @apply ml-0.5 text-red-500;
+  }
+
+  .form-input {
+    @apply block w-full rounded-lg border-[1.5px] border-gray-300 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none transition-[border-color,box-shadow] focus:border-blue-500 focus:shadow-[0_0_0_3px_rgba(59,130,246,0.15)];
+  }
+
+  .form-input:disabled {
+    @apply cursor-not-allowed bg-slate-50 text-slate-400;
+  }
+
+  .input-error {
+    @apply !border-red-500 !shadow-[0_0_0_3px_rgba(239,68,68,0.1)];
+  }
+
+  .error-msg {
+    @apply mt-1 block text-xs font-medium text-red-600;
+  }
+
+  /* Spinners */
+  .spinner {
+    @apply size-8 animate-spin rounded-full border-[3px] border-slate-200 border-t-blue-500;
+  }
+
+  .spinner-sm {
+    @apply inline-block size-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white align-middle;
+  }
+
+  .spinner-search {
+    @apply absolute right-2.5 size-3.5 shrink-0 animate-spin rounded-full border-2 border-slate-200 border-t-blue-500;
+  }
+}
+
+@layer utilities {
+  .icon-nav {
+    @apply size-5 shrink-0;
+  }
+
+  .icon-inline {
+    @apply size-4 shrink-0;
+  }
+
+  .icon-sm {
+    @apply size-3.5 shrink-0;
+  }
+}

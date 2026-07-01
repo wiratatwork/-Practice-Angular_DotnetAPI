@@ -1,0 +1,33 @@
+อธิบาย Scenario ของแต่ละ GitHub Ruleset
+[
+Restrict creations = กำหนดให้คนที่มีสิทธิ์ (Bypass List) Fork แล้ว Push branch main ขึ้นมาใหม่
+Restrict updates = กำหนดให้คนที่มีสิทธิ์ Push หรือ Merge PR ได้
+Restrict deletions = กำหนดให้คนที่มีสิทธิ์ที่จะลบ main ได้
+Require linear history = บังคับให้ใช้ Squash หรือ Rebase เพื่อ merge main เท่านั้น (2 วิธีนี้ได้ Linear History)
+Require deployments to succeed = บังคับให้ Deploy ผ่าน Environment อื่นผ่านก่อน จึงจะ merge main ได้ (ปัจจุบัน มีแค่ Production Environment)
+Require signed commits = บังคับให้ Sign GPG/SSH Signature
+Require a pull request before merging = บังคับ PR
+Sub-rules
+Required approvals: 1 = มี Approval 1 คน
+Dismiss stale approvals = หากมี Commit ใหม่ -> ต้องเริ่ม Approve กันใหม่
+Require approval of most recent reviewable push = ห้ามคน Push Commit Approve เอง
+Require conversation resolution = comment ใน PR ต้อง resolve ครบก่อน merge
+Allowed merge methods: Squash, Rebase, Merge = ใช้ merge แบบใดก็ได้ทั้ง 3 แบบ
+Require review from specific teams = เลือก Team ใดเป็นผู้ Review
+Require review from Code Owners = เลือกที่ระบุในไฟล์ CODEOWNERS เป็นผู้ Review
+Require status checks to pass = merge pr เมื่อ Pass ครบ
+Require branches to be up to date = branch ที่ขอ merge ต้อง Sync กับ main ล่าสุด
+Block force pushes = ป้องกัน force push
+Require code scanning results = บังคับว่าต้องไม่มีช่องโหว่จากการรัน CodeQL Workflow
+Require code quality results = บังคับว่าต้องผ่าน SonarQube
+Automatically request Copilot code review = ให้ Copilot Review อัติโนมัติหลังขอ PR
+]
+ทำไมบางครั้ง Ruleset บอกให้ Check CodeQL แต่มันไม่รัน
+[เกิดจากไฟล์ที่แก้ไข ไม่ใช่ไฟล์ที่ CodeQL Detect Changes]
+สามารถใช้ GitHub Releases + tags มา Apply อย่างไรกับ Project นี้ได้
+[]
+
+1. อัปเดต HANDBOOK_DEPLOYMENT.md ให้เป็นปัจจุบัน
+2. Reusable Trivy Workflow
+ปัจจุบัน: Trivy logic ซ้ำใน [ci-cd-test.yml](.github/workflows/ci-cd-test.yml) และ [ci-cd-main.yml](.github/workflows/ci-cd-main.yml)
+Apply: สร้าง reusable-trivy-scan.yml — DRY + เปลี่ยน severity/policy ที่เดียว

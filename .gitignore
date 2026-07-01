@@ -1,0 +1,36 @@
+# Project-wide
+.vscode/
+.idea/
+.DS_Store
+*.suo
+*.user
+
+# Environment variables
+.env
+
+# Backend (.NET)
+**/bin/
+**/obj/
+.vs/
+appsettings.Development.json
+appsettings.Local.json
+
+# Frontend (Angular / Node)
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/.npm/
+frontend/.cache/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+.env
+GitHub Token.txt
+
+plans/
