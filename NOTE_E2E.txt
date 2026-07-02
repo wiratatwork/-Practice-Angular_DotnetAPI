@@ -15,11 +15,22 @@ e2e:headed รันแบบแสดง Browser
 e2e:ui รัน UI ของ Playwright
 e2e:stack:up รัน Container สำหรับ E2E (PostgreSQL ลูกใหม่, API, Frontend)
 e2e:stack:down ลบ Container พร้อมล้างข้อมูล
+e2e:docker รัน E2E ด้วย Docker Compose (รัน Container แล้วรันทดสอบ)
+
 pree2e และ pree2e:headed ติดตั้ง Chromium
 ]
-
-
-
+อธิบายไฟล์ที่เกี่ยวข้อง และลำดับการทำงานของ npm run e2e
+[รัน playwirght-install.mjs เพื่อติดตั้ง chromium
+playwright.config.ts
+docker-compose.yml รัน stack หลัก
+docker-compose.e2e.yml override สำหรับ E2E DB ชั่วคราว
+รัน test case จากไฟล์ .spec.ts
+]
+e2e-stack.sh ถูกใช้งานตอนไหน
+[CI GitHub Actions]
+ตัวแปร process.env.CI ถูกกำหนดค่าที่ไหน ตอนไหน
+[จากไฟล์ CI]
+ที่ navigation.spec.ts ทำไมถึงไม่ต้อง login ก่อนทดสอบ
 
 เพิ่ม Test Case ให้สมบูรณ์
 ทำให้ Test Case สามารถ Reuse ได้ (Optional)
