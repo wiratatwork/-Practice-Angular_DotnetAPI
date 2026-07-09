@@ -1,107 +1,167 @@
 #!/usr/bin/env bash
-set -euo pipefail # หยุดการทำงานถ้ามี error
+set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" # หาตำแหน่งของไฟล์ deploy-prod.sh
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}" # หาตำแหน่งของไฟล์ docker-compose.prod.yml
-STATE_FILE="${STATE_FILE:-$HOME/basic_app/.last-good-deploy}" # หาตำแหน่งของไฟล์ .last-good-deploy
-DEPLOY_SHA="${DEPLOY_SHA:-}" # ตั้งค่า DEPLOY_SHA เป็นค่าว่าง
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="${PROJECT_ROOT:-$HOME/basic_app}"
+COMPOSE_FILE="${COMPOSE_FILE:-$PROJECT_ROOT/deploy/docker-compose.slot.yml}"
+STATE_FILE="${STATE_FILE:-$PROJECT_ROOT/.last-good-deploy}"
+DEPLOY_SHA="${DEPLOY_SHA:-}"
 
-REGISTRY="${REGISTRY:-ghcr.io/wiratatwork}" # ตั้งค่า REGISTRY เป็น ghcr.io/wiratatwork
-BACKEND_REPO="${BACKEND_REPO:-basic-app-backend}" # ตั้งค่า BACKEND_REPO เป็น basic-app-backend
-FRONTEND_REPO="${FRONTEND_REPO:-basic-app-frontend}" # ตั้งค่า FRONTEND_REPO เป็น basic-app-frontend
+REGISTRY="${REGISTRY:-ghcr.io/wiratatwork}"
+BACKEND_REPO="${BACKEND_REPO:-basic-app-backend}"
+FRONTEND_REPO="${FRONTEND_REPO:-basic-app-frontend}"
 
-ROLLBACK_BACKEND_IMAGE="" # ตั้งค่า ROLLBACK_BACKEND_IMAGE เป็นค่าว่าง
-ROLLBACK_FRONTEND_IMAGE="" # ตั้งค่า ROLLBACK_FRONTEND_IMAGE เป็นค่าว่าง
+NGINX_ACTIVE_LINK="${NGINX_ACTIVE_LINK:-/etc/nginx/conf.d/basic_app_active.conf}"
+NGINX_BLUE_CONF="${NGINX_BLUE_CONF:-$PROJECT_ROOT/deploy/nginx/basic_app_active.blue.conf}"
+NGINX_GREEN_CONF="${NGINX_GREEN_CONF:-$PROJECT_ROOT/deploy/nginx/basic_app_active.green.conf}"
+SUDO_BIN="${SUDO_BIN:-sudo}"
 
-load_rollback_target() { # โหลดข้อมูลจากไฟล์ .last-good-deploy
-  if [ ! -f "$STATE_FILE" ]; then # ถ้าไฟล์ .last-good-deploy ไม่มี
-    echo "==> No rollback state file at $STATE_FILE (first deploy or no prior success)." # แสดงข้อความว่าไฟล์ .last-good-deploy ไม่มี
-    return 0 # ออกจากฟังก์ชัน
+ACTIVE_SLOT="${ACTIVE_SLOT:-blue}"
+PREV_ACTIVE_SLOT=""
+ROLLBACK_BACKEND_IMAGE=""
+ROLLBACK_FRONTEND_IMAGE=""
+
+slot_port_for() {
+  local slot="$1"
+  local kind="$2"
+  if [ "$slot" = "blue" ]; then
+    [ "$kind" = "api" ] && echo "5001" || echo "4201"
+    return 0
+  fi
+  [ "$kind" = "api" ] && echo "5002" || echo "4202"
+}
+
+inactive_slot_for() {
+  [ "$1" = "blue" ] && echo "green" || echo "blue"
+}
+
+compose_project_for() {
+  echo "basicapp-$1"
+}
+
+nginx_conf_for() {
+  [ "$1" = "blue" ] && echo "$NGINX_BLUE_CONF" || echo "$NGINX_GREEN_CONF"
+}
+
+switch_nginx_slot() {
+  local slot="$1"
+  local slot_conf
+  slot_conf="$(nginx_conf_for "$slot")"
+  echo "==> Switching Nginx active slot to: $slot"
+  $SUDO_BIN ln -sfn "$slot_conf" "$NGINX_ACTIVE_LINK"
+  $SUDO_BIN nginx -t
+  $SUDO_BIN nginx -s reload
+}
+
+load_state_file() {
+  if [ ! -f "$STATE_FILE" ]; then
+    echo "==> No state file at $STATE_FILE. Default active slot: $ACTIVE_SLOT"
+    return 0
   fi
 
   # shellcheck disable=SC1090
-  source "$STATE_FILE" # อ่านข้อมูลจากไฟล์ .last-good-deploy
-  # ตัวอย่างข้อมูลในไฟล์ .last-good-deploy
-  # BACKEND_IMAGE=ghcr.io/wiratatwork/basic-app-backend:sha-abc1234
-  # FRONTEND_IMAGE=ghcr.io/wiratatwork/basic-app-frontend:sha-abc1234
-  # DEPLOY_SHA=abc1234
-  # DEPLOYED_AT=2026-06-25T12:00:00Z
+  source "$STATE_FILE"
 
-  if [ -n "${BACKEND_IMAGE:-}" ] && [ -n "${FRONTEND_IMAGE:-}" ]; then # ถ้า BACKEND_IMAGE และ FRONTEND_IMAGE ไม่เป็นค่าว่าง
-    ROLLBACK_BACKEND_IMAGE="$BACKEND_IMAGE" # ตั้งค่า ROLLBACK_BACKEND_IMAGE เป็น BACKEND_IMAGE
-    ROLLBACK_FRONTEND_IMAGE="$FRONTEND_IMAGE" # ตั้งค่า ROLLBACK_FRONTEND_IMAGE เป็น FRONTEND_IMAGE
-    echo "==> Rollback target loaded from $STATE_FILE" # แสดงข้อความว่าโหลดข้อมูลจากไฟล์ .last-good-deploy
-    echo "    Backend:  $ROLLBACK_BACKEND_IMAGE" # แสดงข้อความว่า BACKEND_IMAGE
-    echo "    Frontend: $ROLLBACK_FRONTEND_IMAGE" # แสดงข้อความว่า FRONTEND_IMAGE
-  else
-    echo "WARNING: State file exists but is missing BACKEND_IMAGE or FRONTEND_IMAGE." # แสดงข้อความว่าไฟล์ .last-good-deploy มีข้อมูลข้าม BACKEND_IMAGE หรือ FRONTEND_IMAGE
-    return 1 # ออกจากฟังก์ชัน
+  if [ -n "${ACTIVE_SLOT:-}" ]; then
+    PREV_ACTIVE_SLOT="$ACTIVE_SLOT"
   fi
+
+  if [ -n "${BACKEND_IMAGE:-}" ] && [ -n "${FRONTEND_IMAGE:-}" ]; then
+    ROLLBACK_BACKEND_IMAGE="$BACKEND_IMAGE"
+    ROLLBACK_FRONTEND_IMAGE="$FRONTEND_IMAGE"
+  fi
+
+  echo "==> Loaded previous deploy state from $STATE_FILE"
+  echo "    Active slot: ${PREV_ACTIVE_SLOT:-unknown}"
 }
 
-write_state_file() { # บันทึกข้อมูลลงไฟล์ .last-good-deploy
-  if [ -z "$DEPLOY_SHA" ]; then # ถ้า DEPLOY_SHA ว่าง
-    echo "WARNING: DEPLOY_SHA not set — skipping state file update." # แสดงข้อความว่า DEPLOY_SHA ไม่ตั้งค่า — ข้ามการบันทึกข้อมูลลงไฟล์ .last-good-deploy
-    return 0 # ออกจากฟังก์ชัน
-  fi
+write_state_file() {
+  local active_slot="$1"
+  local backend_image="$2"
+  local frontend_image="$3"
 
-  local backend_image="${REGISTRY}/${BACKEND_REPO}:sha-${DEPLOY_SHA}" # ตั้งค่า backend_image เป็น REGISTRY/BACKEND_REPO:sha-DEPLOY_SHA
-  local frontend_image="${REGISTRY}/${FRONTEND_REPO}:sha-${DEPLOY_SHA}" # ตั้งค่า frontend_image เป็น REGISTRY/FRONTEND_REPO:sha-DEPLOY_SHA
-
-  # บันทึกข้อมูลลงไฟล์ .last-good-deploy
   cat >"$STATE_FILE" <<EOF
+ACTIVE_SLOT=${active_slot}
 BACKEND_IMAGE=${backend_image}
 FRONTEND_IMAGE=${frontend_image}
 DEPLOY_SHA=${DEPLOY_SHA}
 DEPLOYED_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 EOF
 
-  echo "==> Updated state file: $STATE_FILE (sha-${DEPLOY_SHA})" # แสดงข้อความว่าเริ่มบันทึกข้อมูลลงไฟล์ .last-good-deploy
+  echo "==> Updated state file: $STATE_FILE"
 }
 
-deploy_prod_images() { # ดำเนินการ deploy ภายใน docker-compose.prod.yml
-  unset BACKEND_IMAGE FRONTEND_IMAGE # ลบค่า BACKEND_IMAGE และ FRONTEND_IMAGE
+deploy_inactive_slot() {
+  local target_slot="$1"
+  local backend_image="$2"
+  local frontend_image="$3"
+  local api_port frontend_port compose_project
 
-  echo "==> Pulling latest API and frontend images..." # แสดงข้อความว่าเริ่มดึง images จาก GHCR
-  docker compose -f "$COMPOSE_FILE" pull api frontend # ดึง images จาก GHCR
+  api_port="$(slot_port_for "$target_slot" api)"
+  frontend_port="$(slot_port_for "$target_slot" frontend)"
+  compose_project="$(compose_project_for "$target_slot")"
 
-  echo "==> Rolling update: API first..." # แสดงข้อความว่าเริ่มอัปเดต API
-  docker compose -f "$COMPOSE_FILE" up -d --no-deps --wait api # อัปเดต API
+  echo "==> Deploying candidate to slot: $target_slot"
+  BACKEND_IMAGE="$backend_image" \
+    FRONTEND_IMAGE="$frontend_image" \
+    APP_API_HOST_PORT="$api_port" \
+    APP_FRONTEND_HOST_PORT="$frontend_port" \
+    docker compose -f "$COMPOSE_FILE" -p "$compose_project" pull api frontend
 
-  echo "==> Rolling update: frontend..." # แสดงข้อความว่าเริ่มอัปเดต frontend
-  docker compose -f "$COMPOSE_FILE" up -d --no-deps --wait frontend # อัปเดต frontend
+  BACKEND_IMAGE="$backend_image" \
+    FRONTEND_IMAGE="$frontend_image" \
+    APP_API_HOST_PORT="$api_port" \
+    APP_FRONTEND_HOST_PORT="$frontend_port" \
+    docker compose -f "$COMPOSE_FILE" -p "$compose_project" up -d --wait api frontend
+
+  echo "==> Running smoke tests on candidate slot ($target_slot)..."
+  "$SCRIPT_DIR/smoke-test.sh" \
+    "http://127.0.0.1:${api_port}/health" \
+    "http://127.0.0.1:${frontend_port}/"
 }
 
-handle_smoke_failure() { # จัดการการทำ smoke test
-  echo "ERROR: Smoke tests failed after deploy." # แสดงข้อความว่า smoke test ไม่สำเร็จ
-
-  if [ -z "$ROLLBACK_BACKEND_IMAGE" ] || [ -z "$ROLLBACK_FRONTEND_IMAGE" ]; then # ถ้า ROLLBACK_BACKEND_IMAGE หรือ ROLLBACK_FRONTEND_IMAGE ว่าง
-    echo "ERROR: No rollback target available — manual intervention required." # แสดงข้อความว่าไม่มี rollback target
-    exit 1 # ออกจากฟังก์ชัน
+handle_smoke_failure() {
+  local previously_active="$1"
+  echo "ERROR: Candidate slot smoke tests failed."
+  if [ -n "$previously_active" ]; then
+    echo "==> Keeping current production slot unchanged: $previously_active"
+    switch_nginx_slot "$previously_active"
   fi
-
-  echo "==> Attempting automatic rollback..."
-  export ROLLBACK_BACKEND_IMAGE ROLLBACK_FRONTEND_IMAGE # ตั้งค่า ROLLBACK_BACKEND_IMAGE และ ROLLBACK_FRONTEND_IMAGE
-  if ! "$SCRIPT_DIR/rollback-prod.sh"; then # ถ้า rollback ไม่สำเร็จ
-    echo "ERROR: Automatic rollback failed." # แสดงข้อความว่า rollback ไม่สำเร็จ
-    exit 1 # ออกจากฟังก์ชัน
-  fi
-
-  echo "ERROR: Deploy of new version failed; production restored to previous version." # แสดงข้อความว่า deploy ใหม่ไม่สำเร็จ; production กลับมาใช้งานเดิม
-  exit 1 # ออกจากฟังก์ชัน
+  exit 1
 }
 
-load_rollback_target # โหลดข้อมูลจากไฟล์ .last-good-deploy
-deploy_prod_images # ดำเนินการ deploy ภายใน docker-compose.prod.yml
-
-echo "==> Running smoke tests..." # แสดงข้อความว่าเริ่มทำ smoke test
-if ! "$SCRIPT_DIR/smoke-test.sh"; then # ถ้า smoke test ไม่สำเร็จ
-  handle_smoke_failure # จัดการการทำ smoke test
+if [ -z "$DEPLOY_SHA" ]; then
+  echo "ERROR: DEPLOY_SHA is required."
+  exit 1
 fi
 
-write_state_file # บันทึกข้อมูลลงไฟล์ .last-good-deploy
+mkdir -p "$(dirname "$STATE_FILE")"
+load_state_file
 
-echo "==> Pruning unused images..." # แสดงข้อความว่าเริ่มลบ images ที่ไม่ใช้
-docker image prune -f # ลบ images ที่ไม่ใช้
+if [ -n "$PREV_ACTIVE_SLOT" ]; then
+  ACTIVE_SLOT="$PREV_ACTIVE_SLOT"
+fi
+INACTIVE_SLOT="$(inactive_slot_for "$ACTIVE_SLOT")"
 
-echo "==> Deploy complete." # แสดงข้อความว่า deploy สำเร็จ
+NEW_BACKEND_IMAGE="${REGISTRY}/${BACKEND_REPO}:sha-${DEPLOY_SHA}"
+NEW_FRONTEND_IMAGE="${REGISTRY}/${FRONTEND_REPO}:sha-${DEPLOY_SHA}"
+
+if ! deploy_inactive_slot "$INACTIVE_SLOT" "$NEW_BACKEND_IMAGE" "$NEW_FRONTEND_IMAGE"; then
+  handle_smoke_failure "$ACTIVE_SLOT"
+fi
+
+switch_nginx_slot "$INACTIVE_SLOT"
+
+echo "==> Verifying public endpoint after cutover..."
+if ! "$SCRIPT_DIR/smoke-test.sh" "http://127.0.0.1/"; then
+  echo "ERROR: Post-cutover smoke test failed, rolling back traffic to $ACTIVE_SLOT"
+  switch_nginx_slot "$ACTIVE_SLOT"
+  exit 1
+fi
+
+write_state_file "$INACTIVE_SLOT" "$NEW_BACKEND_IMAGE" "$NEW_FRONTEND_IMAGE"
+
+echo "==> Pruning unused images..."
+docker image prune -f
+
+echo "==> Blue/green deploy complete. Active slot: $INACTIVE_SLOT"
