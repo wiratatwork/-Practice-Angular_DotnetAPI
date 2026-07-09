@@ -1,0 +1,49 @@
+version: "3.8"
+
+services:
+  api:
+    image: ${BACKEND_IMAGE}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:5001
+      ConnectionStrings__DefaultConnection: ${DB_CONNECTION}
+      Jwt__Key: ${JWT_KEY}
+      Jwt__Issuer: BasicApp
+      Jwt__Audience: BasicApp
+      Jwt__AccessTokenExpiryMinutes: 15
+      Jwt__RefreshTokenSlidingDays: 7
+      Jwt__RefreshCookieName: refresh_token
+      Jwt__RefreshCookiePath: /api/auth
+      Jwt__RefreshCookieSecure: "true"
+    ports:
+      - "127.0.0.1:${APP_API_HOST_PORT}:5001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5001/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - app-network
+
+  frontend:
+    image: ${FRONTEND_IMAGE}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${APP_FRONTEND_HOST_PORT}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

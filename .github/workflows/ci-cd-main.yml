@@ -54,7 +54,7 @@ jobs:
           host: ${{ secrets.PROD_HOST }}
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
-          source: scripts/deploy-prod.sh,scripts/rollback-prod.sh,scripts/smoke-test.sh
+          source: scripts/deploy-prod.sh,scripts/rollback-prod.sh,scripts/smoke-test.sh,scripts/switch-slot.sh,deploy/docker-compose.slot.yml,deploy/nginx/basic_app_active.blue.conf,deploy/nginx/basic_app_active.green.conf
           target: ~/basic_app/
 
       - name: Deploy via SSH
@@ -66,7 +66,7 @@ jobs:
           script_stop: true
           script: |
             cd ~/basic_app
-            mkdir -p scripts
+            mkdir -p scripts deploy/nginx
             chmod +x scripts/*.sh
 
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io \

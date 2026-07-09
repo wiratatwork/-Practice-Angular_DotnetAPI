@@ -37,7 +37,7 @@ feature/* -> Pull Request -> test -> push -> CI + Build + Push GHCR (:test) + Tr
 |------|-----------|
 | Container Registry | GitHub Container Registry (GHCR) — `ghcr.io/<owner>/basic-app-backend`, `basic-app-frontend` |
 | Test environment | VM/เครื่องทดสอบ — รัน `docker-compose.test.yml` ดึง image tag `:test` |
-| Production environment | VM — รัน `docker-compose.prod.yml` ดึง image tag `:prod` (deploy ผ่าน GitHub Actions) |
+| Production environment | Single VM (Blue/Green slots) — deploy ผ่าน `deploy/docker-compose.slot.yml` และ Nginx slot switch |
 | CI/CD | GitHub Actions |
 | Static analysis | CodeQL (`.github/workflows/codeql.yml`) |
 | Image vulnerability scan | Trivy (`.github/workflows/reusable-trivy-scan.yml`) |
@@ -113,10 +113,10 @@ feature/* -> Pull Request -> test -> push -> CI + Build + Push GHCR (:test) + Tr
 4. **Deploy to Production** — รันเฉพาะเมื่อ `push` หรือ `workflow_dispatch`:
    - copy scripts ไป VM ผ่าน SCP
    - SSH รัน [`scripts/deploy-prod.sh`](scripts/deploy-prod.sh)
-   - rolling update API แล้ว frontend
-   - smoke test ที่ `http://127.0.0.1:5001/health` และ `http://127.0.0.1:4200/`
-   - ถ้า smoke fail → rollback อัตโนมัติด้วย [`scripts/rollback-prod.sh`](scripts/rollback-prod.sh)
-   - บันทึก state ลง `~/.last-good-deploy` สำหรับ rollback ครั้งถัดไป
+   - deploy ลง inactive slot (`blue`/`green`) แล้ว smoke test ตามพอร์ตของ slot
+   - สลับ Nginx active slot แบบ graceful reload
+   - ถ้า smoke fail → ตัดกลับ slot เดิมอัตโนมัติ
+   - บันทึก state ลง `~/basic_app/.last-good-deploy` สำหรับ rollback ครั้งถัดไป
 
 Deploy job ใช้ GitHub Environment **`production`** และ `concurrency: deploy-production` (ไม่ cancel deploy ที่กำลังรัน)
 
@@ -124,9 +124,12 @@ Deploy job ใช้ GitHub Environment **`production`** และ `concurrency:
 
 | Script | หน้าที่ |
 |--------|---------|
-| [`scripts/deploy-prod.sh`](scripts/deploy-prod.sh) | pull images, rolling update, smoke test, auto rollback, บันทึก last-good state |
-| [`scripts/rollback-prod.sh`](scripts/rollback-prod.sh) | rollback ไป image ก่อนหน้า + verify smoke test |
+| [`scripts/deploy-prod.sh`](scripts/deploy-prod.sh) | deploy image ใหม่ลง inactive slot, smoke test, switch traffic, บันทึก last-good state |
+| [`scripts/rollback-prod.sh`](scripts/rollback-prod.sh) | rollback ไป last-known-good slot/image จาก state file + verify smoke test |
+| [`scripts/switch-slot.sh`](scripts/switch-slot.sh) | สลับ active slot แบบ manual (`blue`/`green`) สำหรับ incident response |
 | [`scripts/smoke-test.sh`](scripts/smoke-test.sh) | ตรวจ HTTP health endpoints (retry 5 ครั้ง) |
+
+เอกสาร runbook เชิงปฏิบัติการ: [`docs/blue-green-single-vm.md`](docs/blue-green-single-vm.md)
 
 ## ผู้รับผิดชอบในแต่ละขั้น
 
