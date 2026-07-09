@@ -7,6 +7,9 @@ jobs:
   lint-frontend:
     name: Lint Frontend
     runs-on: ubuntu-latest
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      PLAYWRIGHT_SKIP_INSTALL: "1"
     defaults:
       run:
         working-directory: frontend
@@ -25,6 +28,9 @@ jobs:
   test-frontend:
     name: Test Frontend
     runs-on: ubuntu-latest
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      PLAYWRIGHT_SKIP_INSTALL: "1"
     defaults:
       run:
         working-directory: frontend
