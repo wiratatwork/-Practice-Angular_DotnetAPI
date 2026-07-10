@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${PROJECT_ROOT:-$HOME/basic_app}"
+ENV_FILE="${ENV_FILE:-$PROJECT_ROOT/.env}"
 COMPOSE_FILE="${COMPOSE_FILE:-$PROJECT_ROOT/deploy/docker-compose.slot.yml}"
 STATE_FILE="${STATE_FILE:-$PROJECT_ROOT/.last-good-deploy}"
 
@@ -43,6 +44,12 @@ switch_nginx_slot() {
   $SUDO_BIN nginx -s reload
 }
 
+if [ ! -f "$ENV_FILE" ]; then
+  echo "ERROR: Environment file not found: $ENV_FILE"
+  echo "       Create it with DB_CONNECTION and JWT_KEY (see .env.example)."
+  exit 1
+fi
+
 if [ ! -f "$STATE_FILE" ]; then
   echo "ERROR: State file not found: $STATE_FILE"
   exit 1
@@ -66,13 +73,13 @@ BACKEND_IMAGE="$BACKEND_IMAGE" \
   FRONTEND_IMAGE="$FRONTEND_IMAGE" \
   APP_API_HOST_PORT="$ROLLBACK_API_PORT" \
   APP_FRONTEND_HOST_PORT="$ROLLBACK_FRONTEND_PORT" \
-  docker compose -f "$COMPOSE_FILE" -p "$ROLLBACK_COMPOSE_PROJECT" pull api frontend
+  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" -p "$ROLLBACK_COMPOSE_PROJECT" pull api frontend
 
 BACKEND_IMAGE="$BACKEND_IMAGE" \
   FRONTEND_IMAGE="$FRONTEND_IMAGE" \
   APP_API_HOST_PORT="$ROLLBACK_API_PORT" \
   APP_FRONTEND_HOST_PORT="$ROLLBACK_FRONTEND_PORT" \
-  docker compose -f "$COMPOSE_FILE" -p "$ROLLBACK_COMPOSE_PROJECT" up -d --wait api frontend
+  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" -p "$ROLLBACK_COMPOSE_PROJECT" up -d --wait api frontend
 
 switch_nginx_slot "$ROLLBACK_SLOT"
 
