@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${PROJECT_ROOT:-$HOME/basic_app}"
+ENV_FILE="${ENV_FILE:-$PROJECT_ROOT/.env}"
 COMPOSE_FILE="${COMPOSE_FILE:-$PROJECT_ROOT/deploy/docker-compose.slot.yml}"
 STATE_FILE="${STATE_FILE:-$PROJECT_ROOT/.last-good-deploy}"
 DEPLOY_SHA="${DEPLOY_SHA:-}"
@@ -106,13 +107,13 @@ deploy_inactive_slot() {
     FRONTEND_IMAGE="$frontend_image" \
     APP_API_HOST_PORT="$api_port" \
     APP_FRONTEND_HOST_PORT="$frontend_port" \
-    docker compose -f "$COMPOSE_FILE" -p "$compose_project" pull api frontend
+    docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" -p "$compose_project" pull api frontend
 
   BACKEND_IMAGE="$backend_image" \
     FRONTEND_IMAGE="$frontend_image" \
     APP_API_HOST_PORT="$api_port" \
     APP_FRONTEND_HOST_PORT="$frontend_port" \
-    docker compose -f "$COMPOSE_FILE" -p "$compose_project" up -d --wait api frontend
+    docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" -p "$compose_project" up -d --wait api frontend
 
   echo "==> Running smoke tests on candidate slot ($target_slot)..."
   "$SCRIPT_DIR/smoke-test.sh" \
@@ -132,6 +133,12 @@ handle_smoke_failure() {
 
 if [ -z "$DEPLOY_SHA" ]; then
   echo "ERROR: DEPLOY_SHA is required."
+  exit 1
+fi
+
+if [ ! -f "$ENV_FILE" ]; then
+  echo "ERROR: Environment file not found: $ENV_FILE"
+  echo "       Create it with DB_CONNECTION and JWT_KEY (see .env.example)."
   exit 1
 fi
 
