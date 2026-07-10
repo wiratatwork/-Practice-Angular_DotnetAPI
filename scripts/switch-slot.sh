@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib-nginx.sh
+source "$SCRIPT_DIR/lib-nginx.sh"
+
 PROJECT_ROOT="${PROJECT_ROOT:-$HOME/basic_app}"
 STATE_FILE="${STATE_FILE:-$PROJECT_ROOT/.last-good-deploy}"
 TARGET_SLOT="${1:-}"
 
-NGINX_ACTIVE_LINK="${NGINX_ACTIVE_LINK:-/etc/nginx/conf.d/basic_app_active.conf}"
 NGINX_BLUE_CONF="${NGINX_BLUE_CONF:-$PROJECT_ROOT/deploy/nginx/basic_app_active.blue.conf}"
 NGINX_GREEN_CONF="${NGINX_GREEN_CONF:-$PROJECT_ROOT/deploy/nginx/basic_app_active.green.conf}"
-SUDO_BIN="${SUDO_BIN:-sudo}"
 
 if [ "$TARGET_SLOT" != "blue" ] && [ "$TARGET_SLOT" != "green" ]; then
   echo "Usage: $0 <blue|green>"
@@ -22,18 +24,8 @@ else
 fi
 
 echo "==> Switching live traffic to slot: $TARGET_SLOT"
-$SUDO_BIN cp "$TARGET_CONF" "$NGINX_ACTIVE_LINK"
-$SUDO_BIN nginx -t
-if $SUDO_BIN systemctl is-active --quiet nginx 2>/dev/null; then
-  $SUDO_BIN systemctl reload nginx
-elif $SUDO_BIN pgrep -x nginx >/dev/null 2>&1; then
-  $SUDO_BIN nginx -s reload
-else
-  echo "==> Starting nginx..."
-  if ! $SUDO_BIN systemctl start nginx 2>/dev/null; then
-    $SUDO_BIN nginx
-  fi
-fi
+install_nginx_active_config "$TARGET_CONF"
+reload_or_start_nginx
 
 touch "$STATE_FILE"
 if grep -q "^ACTIVE_SLOT=" "$STATE_FILE"; then
