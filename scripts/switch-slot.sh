@@ -22,9 +22,18 @@ else
 fi
 
 echo "==> Switching live traffic to slot: $TARGET_SLOT"
-$SUDO_BIN ln -sfn "$TARGET_CONF" "$NGINX_ACTIVE_LINK"
+$SUDO_BIN cp "$TARGET_CONF" "$NGINX_ACTIVE_LINK"
 $SUDO_BIN nginx -t
-$SUDO_BIN nginx -s reload
+if $SUDO_BIN systemctl is-active --quiet nginx 2>/dev/null; then
+  $SUDO_BIN systemctl reload nginx
+elif $SUDO_BIN pgrep -x nginx >/dev/null 2>&1; then
+  $SUDO_BIN nginx -s reload
+else
+  echo "==> Starting nginx..."
+  if ! $SUDO_BIN systemctl start nginx 2>/dev/null; then
+    $SUDO_BIN nginx
+  fi
+fi
 
 touch "$STATE_FILE"
 if grep -q "^ACTIVE_SLOT=" "$STATE_FILE"; then

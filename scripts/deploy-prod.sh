@@ -16,8 +16,7 @@ FRONTEND_REPO="${FRONTEND_REPO:-basic-app-frontend}"
 
 NGINX_ACTIVE_LINK="${NGINX_ACTIVE_LINK:-/etc/nginx/conf.d/basic_app_active.conf}"
 NGINX_BLUE_CONF="${NGINX_BLUE_CONF:-$PROJECT_ROOT/deploy/nginx/basic_app_active.blue.conf}"
-NGINX_GREEN_CONF="${NGINX_GREEN_CONF:-$PROJECT_ROOT/deploy/nginx/basic_app_active.green.conf}"
-SUDO_BIN="${SUDO_BIN:-sudo}"
+PUBLIC_SMOKE_URL="${PUBLIC_SMOKE_URL:-http://127.0.0.1/}"
 
 ACTIVE_SLOT="${ACTIVE_SLOT:-blue}"
 PREV_ACTIVE_SLOT=""
@@ -46,14 +45,28 @@ nginx_conf_for() {
   [ "$1" = "blue" ] && echo "$NGINX_BLUE_CONF" || echo "$NGINX_GREEN_CONF"
 }
 
+reload_or_start_nginx() {
+  $SUDO_BIN nginx -t
+  if $SUDO_BIN systemctl is-active --quiet nginx 2>/dev/null; then
+    $SUDO_BIN systemctl reload nginx
+  elif $SUDO_BIN pgrep -x nginx >/dev/null 2>&1; then
+    $SUDO_BIN nginx -s reload
+  else
+    echo "==> Starting nginx..."
+    if ! $SUDO_BIN systemctl start nginx 2>/dev/null; then
+      $SUDO_BIN nginx
+    fi
+  fi
+}
+
 switch_nginx_slot() {
   local slot="$1"
   local slot_conf
   slot_conf="$(nginx_conf_for "$slot")"
   echo "==> Switching Nginx active slot to: $slot"
-  $SUDO_BIN ln -sfn "$slot_conf" "$NGINX_ACTIVE_LINK"
-  $SUDO_BIN nginx -t
-  $SUDO_BIN nginx -s reload
+  # Copy into /etc/nginx so www-data can read config (home dir symlinks often fail).
+  $SUDO_BIN cp "$slot_conf" "$NGINX_ACTIVE_LINK"
+  reload_or_start_nginx
 }
 
 ensure_shared_postgres() {
@@ -174,7 +187,7 @@ fi
 switch_nginx_slot "$INACTIVE_SLOT"
 
 echo "==> Verifying public endpoint after cutover..."
-if ! "$SCRIPT_DIR/smoke-test.sh" "http://127.0.0.1/"; then
+if ! "$SCRIPT_DIR/smoke-test.sh" "$PUBLIC_SMOKE_URL"; then
   echo "ERROR: Post-cutover smoke test failed, rolling back traffic to $ACTIVE_SLOT"
   switch_nginx_slot "$ACTIVE_SLOT"
   exit 1
