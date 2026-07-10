@@ -11,6 +11,8 @@ STATE_FILE="${STATE_FILE:-$PROJECT_ROOT/.last-good-deploy}"
 
 NGINX_ACTIVE_LINK="${NGINX_ACTIVE_LINK:-/etc/nginx/conf.d/basic_app_active.conf}"
 NGINX_BLUE_CONF="${NGINX_BLUE_CONF:-$PROJECT_ROOT/deploy/nginx/basic_app_active.blue.conf}"
+NGINX_GREEN_CONF="${NGINX_GREEN_CONF:-$PROJECT_ROOT/deploy/nginx/basic_app_active.green.conf}"
+SUDO_BIN="${SUDO_BIN:-sudo}"
 PUBLIC_SMOKE_URL="${PUBLIC_SMOKE_URL:-http://127.0.0.1/}"
 
 ACTIVE_SLOT=""
