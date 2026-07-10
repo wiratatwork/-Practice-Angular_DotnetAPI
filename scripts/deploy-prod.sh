@@ -5,6 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${PROJECT_ROOT:-$HOME/basic_app}"
 ENV_FILE="${ENV_FILE:-$PROJECT_ROOT/.env}"
 COMPOSE_FILE="${COMPOSE_FILE:-$PROJECT_ROOT/deploy/docker-compose.slot.yml}"
+PROD_COMPOSE_FILE="${PROD_COMPOSE_FILE:-$PROJECT_ROOT/docker-compose.prod.yml}"
+PROD_COMPOSE_PROJECT="${PROD_COMPOSE_PROJECT:-basic_app}"
 STATE_FILE="${STATE_FILE:-$PROJECT_ROOT/.last-good-deploy}"
 DEPLOY_SHA="${DEPLOY_SHA:-}"
 
@@ -52,6 +54,16 @@ switch_nginx_slot() {
   $SUDO_BIN ln -sfn "$slot_conf" "$NGINX_ACTIVE_LINK"
   $SUDO_BIN nginx -t
   $SUDO_BIN nginx -s reload
+}
+
+ensure_shared_postgres() {
+  if [ ! -f "$PROD_COMPOSE_FILE" ]; then
+    echo "ERROR: Production compose file not found: $PROD_COMPOSE_FILE"
+    exit 1
+  fi
+
+  echo "==> Ensuring shared PostgreSQL is running..."
+  docker compose --env-file "$ENV_FILE" -f "$PROD_COMPOSE_FILE" -p "$PROD_COMPOSE_PROJECT" up -d postgres
 }
 
 load_state_file() {
@@ -152,6 +164,8 @@ INACTIVE_SLOT="$(inactive_slot_for "$ACTIVE_SLOT")"
 
 NEW_BACKEND_IMAGE="${REGISTRY}/${BACKEND_REPO}:sha-${DEPLOY_SHA}"
 NEW_FRONTEND_IMAGE="${REGISTRY}/${FRONTEND_REPO}:sha-${DEPLOY_SHA}"
+
+ensure_shared_postgres
 
 if ! deploy_inactive_slot "$INACTIVE_SLOT" "$NEW_BACKEND_IMAGE" "$NEW_FRONTEND_IMAGE"; then
   handle_smoke_failure "$ACTIVE_SLOT"

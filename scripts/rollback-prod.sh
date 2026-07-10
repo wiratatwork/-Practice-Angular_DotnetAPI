@@ -5,6 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="${PROJECT_ROOT:-$HOME/basic_app}"
 ENV_FILE="${ENV_FILE:-$PROJECT_ROOT/.env}"
 COMPOSE_FILE="${COMPOSE_FILE:-$PROJECT_ROOT/deploy/docker-compose.slot.yml}"
+PROD_COMPOSE_FILE="${PROD_COMPOSE_FILE:-$PROJECT_ROOT/docker-compose.prod.yml}"
+PROD_COMPOSE_PROJECT="${PROD_COMPOSE_PROJECT:-basic_app}"
 STATE_FILE="${STATE_FILE:-$PROJECT_ROOT/.last-good-deploy}"
 
 NGINX_ACTIVE_LINK="${NGINX_ACTIVE_LINK:-/etc/nginx/conf.d/basic_app_active.conf}"
@@ -44,6 +46,16 @@ switch_nginx_slot() {
   $SUDO_BIN nginx -s reload
 }
 
+ensure_shared_postgres() {
+  if [ ! -f "$PROD_COMPOSE_FILE" ]; then
+    echo "ERROR: Production compose file not found: $PROD_COMPOSE_FILE"
+    exit 1
+  fi
+
+  echo "==> Ensuring shared PostgreSQL is running..."
+  docker compose --env-file "$ENV_FILE" -f "$PROD_COMPOSE_FILE" -p "$PROD_COMPOSE_PROJECT" up -d postgres
+}
+
 if [ ! -f "$ENV_FILE" ]; then
   echo "ERROR: Environment file not found: $ENV_FILE"
   echo "       Create it with DB_CONNECTION and JWT_KEY (see .env.example)."
@@ -67,6 +79,8 @@ ROLLBACK_SLOT="$ACTIVE_SLOT"
 ROLLBACK_API_PORT="$(slot_port_for "$ROLLBACK_SLOT" api)"
 ROLLBACK_FRONTEND_PORT="$(slot_port_for "$ROLLBACK_SLOT" frontend)"
 ROLLBACK_COMPOSE_PROJECT="$(compose_project_for "$ROLLBACK_SLOT")"
+
+ensure_shared_postgres
 
 echo "==> Re-deploying rollback images on slot: $ROLLBACK_SLOT"
 BACKEND_IMAGE="$BACKEND_IMAGE" \
