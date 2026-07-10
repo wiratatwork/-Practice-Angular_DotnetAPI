@@ -1,0 +1,8 @@
+docker-compose.slot.yml หา .env ไม่เจอ
+[ระบุให้ใช้ .env จาก root project folder]
+ทำไม deploy\docker-compose.slot.yml ไม่มี service db
+[ใช้ db ของ blue ที่รันอยู่แล้ว]
+เกิดอะไรขึ้น เมื่อรัน job deploy-prod จากไฟล์ ci-cd-main.yml
+cut over คืออะไร ทำงานอย่างไร
+
+อธิบายไฟล์ที่เกี่ยวข้อง
