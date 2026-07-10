@@ -54,7 +54,7 @@ jobs:
           host: ${{ secrets.PROD_HOST }}
           username: ${{ secrets.PROD_USER }}
           key: ${{ secrets.PROD_SSH_KEY }}
-          source: scripts/deploy-prod.sh,scripts/rollback-prod.sh,scripts/smoke-test.sh,scripts/switch-slot.sh,deploy/docker-compose.slot.yml,deploy/nginx/basic_app_active.blue.conf,deploy/nginx/basic_app_active.green.conf,docker-compose.prod.yml
+          source: scripts/deploy-prod.sh,scripts/rollback-prod.sh,scripts/smoke-test.sh,scripts/switch-slot.sh,scripts/lib-nginx.sh,deploy/docker-compose.slot.yml,deploy/nginx/basic_app_active.blue.conf,deploy/nginx/basic_app_active.green.conf,docker-compose.prod.yml
           target: ~/basic_app/
 
       - name: Deploy via SSH
