@@ -8,10 +8,13 @@ SUDO_BIN="${SUDO_BIN:-sudo}"
 install_nginx_active_config() {
   local slot_conf="$1"
 
+  # Use a single include path only. Writing to both conf.d and sites-enabled
+  # makes nginx load duplicate upstream blocks and fail nginx -t.
+  $SUDO_BIN mkdir -p "$(dirname "$NGINX_ACTIVE_LINK")"
   $SUDO_BIN cp "$slot_conf" "$NGINX_ACTIVE_LINK"
-  $SUDO_BIN mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
-  $SUDO_BIN cp "$slot_conf" "$NGINX_SITES_AVAILABLE"
-  $SUDO_BIN ln -sfn "$NGINX_SITES_AVAILABLE" "$NGINX_SITES_ENABLED"
+
+  # Clean up legacy installs that used sites-enabled.
+  $SUDO_BIN rm -f "$NGINX_SITES_ENABLED" "$NGINX_SITES_AVAILABLE"
   $SUDO_BIN rm -f /etc/nginx/sites-enabled/default
 }
 
