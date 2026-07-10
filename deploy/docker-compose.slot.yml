@@ -26,6 +26,7 @@ services:
       start_period: 30s
     networks:
       - app-network
+      - db-network
 
   frontend:
     image: ${FRONTEND_IMAGE}
@@ -47,3 +48,6 @@ services:
 networks:
   app-network:
     driver: bridge
+  db-network:
+    external: true
+    name: ${DB_NETWORK_NAME:-basic_app_demo-network}

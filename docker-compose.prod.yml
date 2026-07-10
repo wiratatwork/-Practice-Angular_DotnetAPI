@@ -88,4 +88,5 @@ volumes:
 
 networks:
   demo-network:
+    name: basic_app_demo-network
     driver: bridge
