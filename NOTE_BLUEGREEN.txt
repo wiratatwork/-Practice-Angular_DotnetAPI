@@ -3,6 +3,20 @@ docker-compose.slot.yml หา .env ไม่เจอ
 ทำไม deploy\docker-compose.slot.yml ไม่มี service db
 [ใช้ db ของ blue ที่รันอยู่แล้ว]
 เกิดอะไรขึ้น เมื่อรัน job deploy-prod จากไฟล์ ci-cd-main.yml
+[
+1. คัดลอกไฟล์ .sh ทั้งหมดเข้า vm ผ่าน protocol scp
+2. เข้า vm
+3. รัน deploy-prod.sh โดยส่ง parameter short_sha จาก job build-push
+]
+deploy-prod.sh มีหลักการทำงานอย่างไร
+[
+pull image ใหม่
+ทดลอง deploy inactive_slot
+เช็ค smoke test ที่ inactive_slot
+ถ้าผ่าน สลับไปใช้ inactive_slot
+ถ้าไม่ผ่าน ยังคงเดิม
+]
+
 cut over คืออะไร ทำงานอย่างไร
 
 อธิบายไฟล์ที่เกี่ยวข้อง
