@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -37,7 +37,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -113,7 +113,7 @@ jobs:
           DB_CONNECTION: Host=postgres;Port=5432;Database=demo;Username=sa;Password=Password123!
           JWT_KEY: e2e-ci-jwt-secret-key-minimum-256-bits-long!!
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
